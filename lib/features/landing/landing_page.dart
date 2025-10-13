@@ -1,3 +1,5 @@
+// lib/features/landing/landing_page.dart
+
 import 'dart:async';
 import 'package:flutter/material.dart';
 
@@ -29,8 +31,11 @@ class _LandingPageState extends State<LandingPage> {
     );
   }
 
-  void _goAuth() {
-    Navigator.pushNamed(context, '/auth'); // <- Ruta del login/registro
+  // --- CAMBIO CLAVE ---
+  // Esta función ahora navega al "guardián" (AuthWrapper)
+  // para que él decida si mostrar el login o el dashboard.
+  void _navigateToApp() {
+    Navigator.pushNamed(context, '/wrapper');
   }
 
   @override
@@ -47,10 +52,9 @@ class _LandingPageState extends State<LandingPage> {
             onFaq: () => _scrollTo(_faqKey),
             onPrecios: () => _scrollTo(_priceKey),
             onAdapt: () => _scrollTo(_adaptKey),
-            onLogin: _goAuth,            // << conectado
-            onCTA: _goAuth,              // << conectado
+            onLogin: _navigateToApp, // << Conectado
+            onCTA: _navigateToApp,   // << Conectado
           ),
-
           Expanded(
             child: SingleChildScrollView(
               child: Column(
@@ -59,7 +63,7 @@ class _LandingPageState extends State<LandingPage> {
                   _Section(
                     key: _homeKey,
                     padding: const EdgeInsets.symmetric(vertical: 56, horizontal: 24),
-                    child: _HeroWithTabs(onCta: _goAuth), // << conectado
+                    child: _HeroWithTabs(onCta: _navigateToApp), // << Conectado
                   ),
 
                   // Sección "Impulsa tus horarios" (cards que navegan)
@@ -69,18 +73,14 @@ class _LandingPageState extends State<LandingPage> {
                     padding: const EdgeInsets.symmetric(vertical: 56, horizontal: 24),
                     child: _ImpulsaTusHorarios(
                       onCardTap: (route) {
-                        // si quieres que vaya al login directo:
-                        _goAuth();
-                        // si prefieres tu placeholder, reemplaza por:
-                        // Navigator.of(context).push(
-                        //   MaterialPageRoute(builder: (_) => ManageStartPage(section: route)),
-                        // );
+                        // Todas las cards ahora llevan al flujo de la app
+                        _navigateToApp();
                       },
                     ),
                   ),
 
                   // "Una competencia única..." + botón + mock de web/móvil
-                  _UniqueValueAndMock(onCta: _goAuth), // << conectado
+                  _UniqueValueAndMock(onCta: _navigateToApp), // << Conectado
 
                   // Cómo funciona (3 pasos)
                   _Section(
@@ -124,11 +124,11 @@ class _LandingPageState extends State<LandingPage> {
                   _Section(
                     key: _priceKey,
                     padding: const EdgeInsets.symmetric(vertical: 56, horizontal: 24),
-                    child: _PricingSimple(onChoose: _goAuth), // << conectado
+                    child: _PricingSimple(onChoose: _navigateToApp), // << Conectado
                   ),
 
                   // Footer con CTA + contacto
-                  _FooterCTA(onCta: _goAuth), // << conectado
+                  _FooterCTA(onCta: _navigateToApp), // << Conectado
                 ],
               ),
             ),
@@ -238,7 +238,7 @@ class _Navbar extends StatelessWidget {
 class _NavBtn extends StatelessWidget {
   final String text;
   final VoidCallback onTap;
-  const _NavBtn(this.text, this.onTap, {super.key});
+  const _NavBtn(this.text, this.onTap);
   @override
   Widget build(BuildContext context) {
     return TextButton(
@@ -278,7 +278,7 @@ class _HeroWithTabsState extends State<_HeroWithTabs> {
     super.initState();
     _timer = Timer.periodic(const Duration(seconds: 5), (_) {
       _index = (_index + 1) % _tabs.length;
-      if (mounted) {
+      if (mounted && _controller.hasClients) {
         _controller.animateToPage(_index,
             duration: const Duration(milliseconds: 500),
             curve: Curves.easeInOutCubic);
@@ -401,7 +401,6 @@ class _ImpulsaTusHorarios extends StatelessWidget {
         Text('Descubre cómo nuestros módulos aceleran tu agenda.',
             style: TextStyle(color: Colors.white.withOpacity(0.8))),
         const SizedBox(height: 16),
-
         LayoutBuilder(builder: (_, c) {
           final cols = c.maxWidth < 900 ? 1 : 2;
           return GridView.builder(
@@ -563,16 +562,16 @@ class _FeaturesBullets extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     Widget col(String title, List<String> items) => Expanded(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(title,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-          const SizedBox(height: 10),
-          ...items.map((t) => _Bullet(text: t)),
-        ],
-      ),
-    );
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title,
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+              const SizedBox(height: 10),
+              ...items.map((t) => _Bullet(text: t)),
+            ],
+          ),
+        );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -848,13 +847,13 @@ class _PriceCard extends StatelessWidget {
                   Text(price, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 24)),
                   const SizedBox(height: 6),
                   ...features.map((f) => Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 2),
-                    child: Row(children: [
-                      const Icon(Icons.check, size: 18, color: Color(0xFF7C3AED)),
-                      const SizedBox(width: 6),
-                      Text(f),
-                    ]),
-                  )),
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: Row(children: [
+                          const Icon(Icons.check, size: 18, color: Color(0xFF7C3AED)),
+                          const SizedBox(width: 6),
+                          Text(f),
+                        ]),
+                      )),
                 ],
               ),
             ),
@@ -1052,9 +1051,9 @@ class _MenuCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: columns
             .map((c) => Expanded(child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8),
-          child: c,
-        )))
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: c,
+                )))
             .toList(),
       ),
     );
@@ -1135,25 +1134,6 @@ class _Section extends StatelessWidget {
           constraints: const BoxConstraints(maxWidth: 1100),
           child: Padding(padding: padding, child: child),
         ),
-      ),
-    );
-  }
-}
-
-/* ============================================================
- * Pantalla placeholder para "gestión" (solo si la usas)
- * ============================================================ */
-
-class ManageStartPage extends StatelessWidget {
-  final String section;
-  const ManageStartPage({super.key, required this.section});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text('Inicia tu gestión — $section')),
-      body: const Center(
-        child: Text('Aquí armaremos el onboarding/registro de Pyme ✨'),
       ),
     );
   }

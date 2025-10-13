@@ -1,43 +1,99 @@
 import 'package:firebase_auth/firebase_auth.dart';
 
 class AuthService {
-  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final _auth = FirebaseAuth.instance;
 
-  // Iniciar sesión
-  Future<String?> signInWithEmail({
-    required String email,
-    required String password,
-  }) async {
-    try {
-      await _auth.signInWithEmailAndPassword(email: email, password: password);
-
-      // Si el correo no está verificado, avisar
-      if (!_auth.currentUser!.emailVerified) {
-        return 'Tu correo no está verificado. Revisa tu email y confirma. ¿Reenviar enlace desde el login?';
-      }
-      return null; // éxito
-    } on FirebaseAuthException catch (e) {
-      return _mapError(e);
-    } catch (_) {
-      return 'Error inesperado al iniciar sesión.';
-    }
-  }
-
-  // Registrar
+  // Registrar nuevo usuario
   Future<String?> registerWithEmail({
     required String email,
     required String password,
   }) async {
     try {
-      await _auth.createUserWithEmailAndPassword(email: email, password: password);
+      // Validaciones básicas antes de Firebase
+      if (email.trim().isEmpty || password.isEmpty) {
+        return 'Faltan rellenar datos';
+      }
+      if (!email.contains('@')) {
+        return 'El correo debe contener @';
+      }
+      if (password.length < 6) {
+        return 'La contraseña debe tener al menos 6 caracteres';
+      }
 
-      // Enviar verificación
+      // Crear usuario en Firebase
+      await _auth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+
+      // Enviar verificación (opcional)
       await _auth.currentUser?.sendEmailVerification();
+
       return null; // éxito
     } on FirebaseAuthException catch (e) {
-      return _mapError(e);
-    } catch (_) {
-      return 'Error inesperado al registrar.';
+      switch (e.code) {
+        case 'email-already-in-use':
+          return 'El correo ya está en uso';
+        case 'invalid-email':
+          return 'El correo no es válido';
+        case 'weak-password':
+          return 'La contraseña es demasiado débil (mínimo 6 caracteres)';
+        case 'operation-not-allowed':
+          return 'El método Email/Password no está habilitado en Firebase';
+        default:
+          return 'Error: ${e.message ?? e.code}';
+      }
+    } catch (e) {
+      return 'Error desconocido: $e';
+    }
+  }
+
+  // Iniciar sesión existente
+  Future<String?> signInWithEmail({
+    required String email,
+    required String password,
+  }) async {
+    try {
+      if (email.trim().isEmpty || password.isEmpty) {
+        return 'Faltan rellenar datos';
+      }
+
+      final cred = await _auth.signInWithEmailAndPassword(
+        email: email.trim(),
+        password: password,
+      );
+
+      // Si quieres requerir verificación de correo:
+      if (cred.user != null && !cred.user!.emailVerified) {
+        return 'El correo no está verificado';
+      }
+
+      return null; // éxito
+    } on FirebaseAuthException catch (e) {
+      switch (e.code) {
+        case 'invalid-email':
+          return 'Correo no válido';
+        case 'user-not-found':
+          return 'No existe una cuenta con ese correo';
+        case 'wrong-password':
+          return 'Contraseña incorrecta';
+        case 'user-disabled':
+          return 'La cuenta fue deshabilitada';
+        default:
+          return 'Error: ${e.message ?? e.code}';
+      }
+    } catch (e) {
+      return 'Error desconocido: $e';
+    }
+  }
+
+  // Cerrar sesión
+  Future<String?> signOut() async {
+    try {
+      await _auth.signOut();
+      return null;
+    } catch (e) {
+      return 'Error al cerrar sesión: $e';
     }
   }
 
@@ -49,42 +105,12 @@ class AuthService {
         await user.sendEmailVerification();
         return null;
       }
-      return 'No hay usuario para verificar.';
-    } catch (_) {
-      return 'No se pudo enviar el correo de verificación.';
+      return 'El usuario no existe o ya está verificado';
+    } catch (e) {
+      return 'Error al reenviar correo de verificación: $e';
     }
   }
 
-  // Cerrar sesión
-  Future<String?> signOut() async {
-    try {
-      await _auth.signOut();
-      return null;
-    } catch (_) {
-      return 'Error al cerrar sesión';
-    }
-  }
-
+  // Obtener usuario actual
   User? get currentUser => _auth.currentUser;
-
-  String _mapError(FirebaseAuthException e) {
-    switch (e.code) {
-      case 'invalid-email':
-        return 'El correo no es válido.';
-      case 'user-disabled':
-        return 'Este usuario fue deshabilitado.';
-      case 'user-not-found':
-        return 'Usuario no encontrado.';
-      case 'wrong-password':
-        return 'Contraseña incorrecta.';
-      case 'email-already-in-use':
-        return 'El correo ya está en uso.';
-      case 'weak-password':
-        return 'La contraseña es muy débil (mínimo 6 caracteres).';
-      case 'operation-not-allowed':
-        return 'Operación no permitida.';
-      default:
-        return 'Error: ${e.message ?? e.code}';
-    }
-  }
 }
