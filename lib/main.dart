@@ -1,7 +1,14 @@
 import 'package:flutter/material.dart';
-import 'features/landing/landing_page.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 
-void main() {
+import 'features/landing/landing_page.dart';
+import 'auth/auth_page.dart';
+import 'features/admin_dashboard/admin_dashboard.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   runApp(const MyApp());
 }
 
@@ -19,7 +26,11 @@ class MyApp extends StatelessWidget {
           brightness: Brightness.dark,
         ),
       ),
-      home: const LandingPage(),
+      routes: {
+        '/': (_) => const LandingPage(),
+        '/auth': (_) => const AuthPage(), // Login/Registro
+        '/dashboard': (_) => const AdminDashboardPage(), // Home admin
+      },
       debugShowCheckedModeBanner: false,
     );
   }
