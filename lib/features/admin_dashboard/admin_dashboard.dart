@@ -326,33 +326,136 @@ class _AgendaPageState extends State<AgendaPage> {
   }
 }
 
-// --- PÁGINAS DE RELLENO (PLACEHOLDERS) PARA CADA SECCIÓN ---
-// Aquí es donde desarrollarás el contenido específico de cada parte del dashboard.
+// --- CLASE MODELO PARA UN BARBERO ---
+// Esto nos ayuda a organizar los datos de cada barbero.
+class Barbero {
+  final String nombre;
+  final String especialidad;
+  final String fotoUrl; // URL de la foto del barbero.
 
-class BarberosPage extends StatelessWidget {
+  Barbero({
+    required this.nombre,
+    required this.especialidad,
+    required this.fotoUrl,
+  });
+}
+
+// --- PÁGINA DE GESTIÓN DE BARBEROS (SECCIÓN ACTUALIZADA) ---
+
+class BarberosPage extends StatefulWidget {
   const BarberosPage({super.key});
 
   @override
+  State<BarberosPage> createState() => _BarberosPageState();
+}
+
+class _BarberosPageState extends State<BarberosPage> {
+  // Lista de barberos. En una app real, esto vendría de una base de datos.
+  final List<Barbero> _barberos = [
+    Barbero(
+      nombre: 'Carlos Gutierrez',
+      especialidad: 'Cortes clásicos, Afeitado',
+      fotoUrl: 'https://placehold.co/100x100/E8117F/white?text=CG',
+    ),
+    Barbero(
+      nombre: 'Matias Rodriguez',
+      especialidad: 'Diseños, Coloración',
+      fotoUrl: 'https://placehold.co/100x100/114DE8/white?text=MR',
+    ),
+    Barbero(
+      nombre: 'Javier Nuñez',
+      especialidad: 'Corte moderno, Barba',
+      fotoUrl: 'https://placehold.co/100x100/E89111/white?text=JN',
+    ),
+    Barbero(
+      nombre: 'Ricardo Soto',
+      especialidad: 'Todo tipo de cortes',
+      fotoUrl: 'https://placehold.co/100x100/8411E8/white?text=RS',
+    ),
+  ];
+
+  void _editarBarbero(Barbero barbero) {
+    // Lógica para abrir un formulario de edición para el barbero seleccionado.
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('Editando a ${barbero.nombre}')));
+  }
+
+  void _eliminarBarbero(int index) {
+    // Lógica para eliminar el barbero.
+    final barberoEliminado = _barberos[index].nombre;
+    setState(() {
+      _barberos.removeAt(index);
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('$barberoEliminado ha sido eliminado.')),
+    );
+  }
+
+  void _agregarBarbero() {
+    // Lógica para abrir un formulario y agregar un nuevo barbero.
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'Aquí se abriría el formulario para agregar un nuevo barbero.',
+        ),
+      ),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return const Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.content_cut, size: 80, color: Colors.grey),
-          SizedBox(height: 20),
-          Text(
-            'Gestión de Barberos',
-            style: TextStyle(fontSize: 22, color: Colors.grey),
-          ),
-          Text(
-            'Aquí podrás añadir, editar o eliminar barberos.',
-            style: TextStyle(color: Colors.grey),
-          ),
-        ],
+    return Scaffold(
+      body: ListView.builder(
+        padding: const EdgeInsets.all(8.0),
+        itemCount: _barberos.length,
+        itemBuilder: (context, index) {
+          final barbero = _barberos[index];
+          return Card(
+            elevation: 3,
+            margin: const EdgeInsets.symmetric(vertical: 8.0),
+            child: ListTile(
+              contentPadding: const EdgeInsets.all(12.0),
+              leading: CircleAvatar(
+                radius: 30,
+                backgroundImage: NetworkImage(barbero.fotoUrl),
+              ),
+              title: Text(
+                barbero.nombre,
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              subtitle: Text(barbero.especialidad),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: Icon(Icons.edit, color: Colors.blueGrey[600]),
+                    tooltip: 'Editar',
+                    onPressed: () => _editarBarbero(barbero),
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.delete, color: Colors.red[400]),
+                    tooltip: 'Eliminar',
+                    onPressed: () => _eliminarBarbero(index),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _agregarBarbero,
+        backgroundColor: Colors.blueGrey[800],
+        foregroundColor: Colors.white,
+        tooltip: 'Añadir Barbero',
+        child: const Icon(Icons.add),
       ),
     );
   }
 }
+
+// --- PÁGINAS DE RELLENO (PLACEHOLDERS) PARA LAS OTRAS SECCIONES ---
 
 class VentasPage extends StatelessWidget {
   const VentasPage({super.key});
