@@ -2,6 +2,8 @@
 
 import 'dart:async';
 import 'package:flutter/material.dart';
+// --- CAMBIO 1: Importar la página de reserva ---
+import '../public_booking/booking_page.dart';
 
 class LandingPage extends StatefulWidget {
   const LandingPage({super.key});
@@ -10,7 +12,7 @@ class LandingPage extends StatefulWidget {
 }
 
 class _LandingPageState extends State<LandingPage> {
-  // Anclas para el scroll
+  // Anclas para el scroll (esto está perfecto, no se toca)
   final _homeKey = GlobalKey();
   final _servicesKey = GlobalKey();
   final _howKey = GlobalKey();
@@ -31,11 +33,17 @@ class _LandingPageState extends State<LandingPage> {
     );
   }
 
-  // --- CAMBIO CLAVE ---
-  // Esta función ahora navega al "guardián" (AuthWrapper)
-  // para que él decida si mostrar el login o el dashboard.
-  void _navigateToApp() {
+  // Esta función es para el BARBERO que inicia sesión
+  void _navigateToAdminLogin() {
     Navigator.pushNamed(context, '/wrapper');
+  }
+
+  // --- CAMBIO 2: Nueva función para el CLIENTE que quiere agendar ---
+  void _navigateToBooking() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const BookingPage()),
+    );
   }
 
   @override
@@ -52,8 +60,9 @@ class _LandingPageState extends State<LandingPage> {
             onFaq: () => _scrollTo(_faqKey),
             onPrecios: () => _scrollTo(_priceKey),
             onAdapt: () => _scrollTo(_adaptKey),
-            onLogin: _navigateToApp, // << Conectado
-            onCTA: _navigateToApp,   // << Conectado
+            onLogin: _navigateToAdminLogin, // Correcto: para el admin
+            onCTA:
+                _navigateToBooking, // --- CAMBIO 3: El botón "Prueba gratis" ahora agenda ---
           ),
           Expanded(
             child: SingleChildScrollView(
@@ -62,73 +71,92 @@ class _LandingPageState extends State<LandingPage> {
                   // HERO con tabs + slider
                   _Section(
                     key: _homeKey,
-                    padding: const EdgeInsets.symmetric(vertical: 56, horizontal: 24),
-                    child: _HeroWithTabs(onCta: _navigateToApp), // << Conectado
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 56,
+                      horizontal: 24,
+                    ),
+                    child: _HeroWithTabs(
+                      onCta: _navigateToBooking,
+                    ), // --- CAMBIO 4: Conectado a la reserva ---
                   ),
 
                   // Sección "Impulsa tus horarios" (cards que navegan)
                   _Section(
                     key: _servicesKey,
                     color: const Color(0xFF0F1324),
-                    padding: const EdgeInsets.symmetric(vertical: 56, horizontal: 24),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 56,
+                      horizontal: 24,
+                    ),
                     child: _ImpulsaTusHorarios(
                       onCardTap: (route) {
-                        // Todas las cards ahora llevan al flujo de la app
-                        _navigateToApp();
+                        // --- CAMBIO 5: Todas las cards ahora llevan a la página de reserva ---
+                        _navigateToBooking();
                       },
                     ),
                   ),
 
                   // "Una competencia única..." + botón + mock de web/móvil
-                  _UniqueValueAndMock(onCta: _navigateToApp), // << Conectado
-
-                  // Cómo funciona (3 pasos)
+                  _UniqueValueAndMock(
+                    onCta: _navigateToAdminLogin,
+                  ), // Lo dejamos para el admin
+                  // El resto de tu página no necesita cambios...
                   _Section(
                     key: _howKey,
                     color: const Color(0xFF0F1324),
-                    padding: const EdgeInsets.symmetric(vertical: 56, horizontal: 24),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 56,
+                      horizontal: 24,
+                    ),
                     child: const _HowItWorks(),
                   ),
-
-                  // Funcionalidades (CAPTA / GESTIONA bullets)
                   _Section(
                     key: _featKey,
-                    padding: const EdgeInsets.symmetric(vertical: 56, horizontal: 24),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 56,
+                      horizontal: 24,
+                    ),
                     child: const _FeaturesBullets(),
                   ),
-
-                  // Testimonios (placeholder)
                   _Section(
                     key: _testimonialsKey,
                     color: const Color(0xFF0F1324),
-                    padding: const EdgeInsets.symmetric(vertical: 56, horizontal: 24),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 56,
+                      horizontal: 24,
+                    ),
                     child: const _Testimonials(),
                   ),
-
-                  // FAQs
                   _Section(
                     key: _faqKey,
-                    padding: const EdgeInsets.symmetric(vertical: 56, horizontal: 24),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 56,
+                      horizontal: 24,
+                    ),
                     child: const _Faqs(),
                   ),
-
-                  // “Nos adaptamos a tu negocio” con chips redondos auto-scroll
                   _Section(
                     key: _adaptKey,
                     color: const Color(0xFF0F1324),
-                    padding: const EdgeInsets.symmetric(vertical: 56, horizontal: 24),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 56,
+                      horizontal: 24,
+                    ),
                     child: const _AdaptamosRubros(),
                   ),
-
-                  // Precios simple
                   _Section(
                     key: _priceKey,
-                    padding: const EdgeInsets.symmetric(vertical: 56, horizontal: 24),
-                    child: _PricingSimple(onChoose: _navigateToApp), // << Conectado
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 56,
+                      horizontal: 24,
+                    ),
+                    child: _PricingSimple(
+                      onChoose: _navigateToBooking,
+                    ), // CAMBIO: Elige plan te lleva a agendar
                   ),
-
-                  // Footer con CTA + contacto
-                  _FooterCTA(onCta: _navigateToApp), // << Conectado
+                  _FooterCTA(
+                    onCta: _navigateToBooking,
+                  ), // CAMBIO: El CTA del footer te lleva a agendar
                 ],
               ),
             ),
@@ -138,6 +166,11 @@ class _LandingPageState extends State<LandingPage> {
     );
   }
 }
+
+// ======================================================================
+// AQUÍ VA TODO EL RESTO DE TU CÓDIGO (_Navbar, _HeroWithTabs, etc.)
+// No necesitas cambiar nada en los demás widgets, solo pégalos debajo.
+// ======================================================================
 
 /* ============================================================
  * NAVBAR con menús hover básicos
@@ -191,8 +224,10 @@ class _Navbar extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 10),
-                const Text('TuEmpresa',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
+                const Text(
+                  'TuEmpresa',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+                ),
               ],
             ),
             const Spacer(),
@@ -206,16 +241,64 @@ class _Navbar extends StatelessWidget {
               label: 'Funcionalidades',
               menuBuilder: (close) => _MenuCard(
                 columns: [
-                  _MenuColumn(title: 'CAPTA', items: [
-                    _MenuItem(icon: Icons.event_available, text: 'Agenda online', onTap: () { close(); onFuncionalidades(); }),
-                    _MenuItem(icon: Icons.calendar_month, text: 'Sitio de reservas', onTap: () { close(); onFuncionalidades(); }),
-                    _MenuItem(icon: Icons.notifications_active, text: 'WhatsApp notis', onTap: () { close(); onFuncionalidades(); }),
-                  ]),
-                  _MenuColumn(title: 'GESTIONA', items: [
-                    _MenuItem(icon: Icons.inventory_2, text: 'Control de inventario', onTap: () { close(); onFuncionalidades(); }),
-                    _MenuItem(icon: Icons.bar_chart, text: 'Reportes', onTap: () { close(); onFuncionalidades(); }),
-                    _MenuItem(icon: Icons.campaign, text: 'Marketing', onTap: () { close(); onFuncionalidades(); }),
-                  ]),
+                  _MenuColumn(
+                    title: 'CAPTA',
+                    items: [
+                      _MenuItem(
+                        icon: Icons.event_available,
+                        text: 'Agenda online',
+                        onTap: () {
+                          close();
+                          onFuncionalidades();
+                        },
+                      ),
+                      _MenuItem(
+                        icon: Icons.calendar_month,
+                        text: 'Sitio de reservas',
+                        onTap: () {
+                          close();
+                          onFuncionalidades();
+                        },
+                      ),
+                      _MenuItem(
+                        icon: Icons.notifications_active,
+                        text: 'WhatsApp notis',
+                        onTap: () {
+                          close();
+                          onFuncionalidades();
+                        },
+                      ),
+                    ],
+                  ),
+                  _MenuColumn(
+                    title: 'GESTIONA',
+                    items: [
+                      _MenuItem(
+                        icon: Icons.inventory_2,
+                        text: 'Control de inventario',
+                        onTap: () {
+                          close();
+                          onFuncionalidades();
+                        },
+                      ),
+                      _MenuItem(
+                        icon: Icons.bar_chart,
+                        text: 'Reportes',
+                        onTap: () {
+                          close();
+                          onFuncionalidades();
+                        },
+                      ),
+                      _MenuItem(
+                        icon: Icons.campaign,
+                        text: 'Marketing',
+                        onTap: () {
+                          close();
+                          onFuncionalidades();
+                        },
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
@@ -227,7 +310,10 @@ class _Navbar extends StatelessWidget {
             const SizedBox(width: 8),
             TextButton(onPressed: onLogin, child: const Text('Ir a mi cuenta')),
             const SizedBox(width: 8),
-            ElevatedButton(onPressed: onCTA, child: const Text('Prueba gratis')),
+            ElevatedButton(
+              onPressed: onCTA,
+              child: const Text('Prueba gratis'),
+            ),
           ],
         ),
       ),
@@ -279,9 +365,11 @@ class _HeroWithTabsState extends State<_HeroWithTabs> {
     _timer = Timer.periodic(const Duration(seconds: 5), (_) {
       _index = (_index + 1) % _tabs.length;
       if (mounted && _controller.hasClients) {
-        _controller.animateToPage(_index,
-            duration: const Duration(milliseconds: 500),
-            curve: Curves.easeInOutCubic);
+        _controller.animateToPage(
+          _index,
+          duration: const Duration(milliseconds: 500),
+          curve: Curves.easeInOutCubic,
+        );
         setState(() {});
       }
     });
@@ -310,7 +398,10 @@ class _HeroWithTabsState extends State<_HeroWithTabs> {
           style: TextStyle(color: Colors.white.withOpacity(0.85)),
         ),
         const SizedBox(height: 20),
-        ElevatedButton(onPressed: widget.onCta, child: const Text('Prueba gratis ➜')),
+        ElevatedButton(
+          onPressed: widget.onCta,
+          child: const Text('Prueba gratis ➜'),
+        ),
 
         const SizedBox(height: 18),
 
@@ -333,9 +424,11 @@ class _HeroWithTabsState extends State<_HeroWithTabs> {
                 ),
                 onSelected: (_) {
                   setState(() => _index = i);
-                  _controller.animateToPage(i,
-                      duration: const Duration(milliseconds: 350),
-                      curve: Curves.easeOutCubic);
+                  _controller.animateToPage(
+                    i,
+                    duration: const Duration(milliseconds: 350),
+                    curve: Curves.easeOutCubic,
+                  );
                 },
               ),
           ],
@@ -355,11 +448,21 @@ class _HeroWithTabsState extends State<_HeroWithTabs> {
               itemBuilder: (_, i) => Stack(
                 fit: StackFit.expand,
                 children: [
-                  Image.asset(_tabs[i].$3, fit: BoxFit.cover),
+                  Image.asset(
+                    _tabs[i].$3,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) => Container(
+                      color: Colors.grey,
+                      child: Center(child: Text('Error al cargar imagen')),
+                    ),
+                  ),
                   Container(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
-                        colors: [Colors.transparent, Colors.black.withOpacity(0.2)],
+                        colors: [
+                          Colors.transparent,
+                          Colors.black.withOpacity(0.2),
+                        ],
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
                       ),
@@ -386,8 +489,18 @@ class _ImpulsaTusHorarios extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final items = [
-      ('Agenda Online', 'assets/img/serv1.jpg', Icons.event_available, 'agenda'),
-      ('Sitio de reservas', 'assets/img/serv2.jpg', Icons.calendar_month, 'reservas'),
+      (
+        'Agenda Online',
+        'assets/img/serv1.jpg',
+        Icons.event_available,
+        'agenda',
+      ),
+      (
+        'Sitio de reservas',
+        'assets/img/serv2.jpg',
+        Icons.calendar_month,
+        'reservas',
+      ),
       ('Whatsapp notis', 'assets/img/serv3.jpg', Icons.sms, 'whatsapp'),
       ('Marketing', 'assets/img/serv4.jpg', Icons.campaign, 'marketing'),
     ];
@@ -395,57 +508,81 @@ class _ImpulsaTusHorarios extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Impulsa tus horarios',
-            style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800)),
+        const Text(
+          'Impulsa tus horarios',
+          style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800),
+        ),
         const SizedBox(height: 8),
-        Text('Descubre cómo nuestros módulos aceleran tu agenda.',
-            style: TextStyle(color: Colors.white.withOpacity(0.8))),
+        Text(
+          'Descubre cómo nuestros módulos aceleran tu agenda.',
+          style: TextStyle(color: Colors.white.withOpacity(0.8)),
+        ),
         const SizedBox(height: 16),
-        LayoutBuilder(builder: (_, c) {
-          final cols = c.maxWidth < 900 ? 1 : 2;
-          return GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: cols,
-              crossAxisSpacing: 16,
-              mainAxisSpacing: 16,
-              childAspectRatio: 16 / 6.5,
-            ),
-            itemCount: items.length,
-            itemBuilder: (_, i) {
-              final it = items[i];
-              return InkWell(
-                onTap: () => onCardTap(it.$4),
-                child: Card(
-                  clipBehavior: Clip.antiAlias,
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      Image.asset(it.$2, fit: BoxFit.cover),
-                      Container(color: Colors.black.withOpacity(0.45)),
-                      Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Row(
-                          children: [
-                            Icon(it.$3, color: const Color(0xFF7C3AED), size: 28),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Text(it.$1,
-                                  style: const TextStyle(
-                                      fontSize: 18, fontWeight: FontWeight.w700)),
-                            ),
-                            const Icon(Icons.arrow_forward_ios, size: 16),
-                          ],
+        LayoutBuilder(
+          builder: (_, c) {
+            final cols = c.maxWidth < 900 ? 1 : 2;
+            return GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: cols,
+                crossAxisSpacing: 16,
+                mainAxisSpacing: 16,
+                childAspectRatio: 16 / 6.5,
+              ),
+              itemCount: items.length,
+              itemBuilder: (_, i) {
+                final it = items[i];
+                return InkWell(
+                  onTap: () => onCardTap(it.$4),
+                  child: Card(
+                    clipBehavior: Clip.antiAlias,
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        Image.asset(
+                          it.$2,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) =>
+                              Container(
+                                color: Colors.grey,
+                                child: Center(
+                                  child: Text('Error al cargar imagen'),
+                                ),
+                              ),
                         ),
-                      ),
-                    ],
+                        Container(color: Colors.black.withOpacity(0.45)),
+                        Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Row(
+                            children: [
+                              Icon(
+                                it.$3,
+                                color: const Color(0xFF7C3AED),
+                                size: 28,
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  it.$1,
+                                  style: const TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                              const Icon(Icons.arrow_forward_ios, size: 16),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              );
-            },
-          );
-        }),
+                );
+              },
+            );
+          },
+        ),
       ],
     );
   }
@@ -465,42 +602,69 @@ class _UniqueValueAndMock extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 56, horizontal: 24),
       child: Column(
         children: [
-          const Text('Una competencia única donde ordenarás y acelerarás tu crecimiento',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800)),
+          const Text(
+            'Una competencia única donde ordenarás y acelerarás tu crecimiento',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800),
+          ),
           const SizedBox(height: 12),
-          ElevatedButton(onPressed: onCta, child: const Text('Crear tu cuenta gratis')),
+          ElevatedButton(
+            onPressed: onCta,
+            child: const Text('Crear tu cuenta gratis'),
+          ),
           const SizedBox(height: 22),
 
           // Mock lado a lado
-          LayoutBuilder(builder: (_, c) {
-            final isNarrow = c.maxWidth < 900;
-            return Flex(
-              direction: isNarrow ? Axis.vertical : Axis.horizontal,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Expanded(
-                  child: AspectRatio(
-                    aspectRatio: 16 / 9,
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: Image.asset('assets/img/dashboard.jpg', fit: BoxFit.cover),
+          LayoutBuilder(
+            builder: (_, c) {
+              final isNarrow = c.maxWidth < 900;
+              return Flex(
+                direction: isNarrow ? Axis.vertical : Axis.horizontal,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: AspectRatio(
+                      aspectRatio: 16 / 9,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Image.asset(
+                          'assets/img/dashboard.jpg',
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) =>
+                              Container(
+                                color: Colors.grey,
+                                child: Center(
+                                  child: Text('Error al cargar imagen'),
+                                ),
+                              ),
+                        ),
+                      ),
                     ),
                   ),
-                ),
-                SizedBox(width: isNarrow ? 0 : 16, height: isNarrow ? 16 : 0),
-                Expanded(
-                  child: AspectRatio(
-                    aspectRatio: 9 / 16,
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(24),
-                      child: Image.asset('assets/img/mobile.jpg', fit: BoxFit.cover),
+                  SizedBox(width: isNarrow ? 0 : 16, height: isNarrow ? 16 : 0),
+                  Expanded(
+                    child: AspectRatio(
+                      aspectRatio: 9 / 16,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(24),
+                        child: Image.asset(
+                          'assets/img/mobile.jpg',
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) =>
+                              Container(
+                                color: Colors.grey,
+                                child: Center(
+                                  child: Text('Error al cargar imagen'),
+                                ),
+                              ),
+                        ),
+                      ),
                     ),
                   ),
-                ),
-              ],
-            );
-          }),
+                ],
+              );
+            },
+          ),
         ],
       ),
     );
@@ -519,34 +683,43 @@ class _HowItWorks extends StatelessWidget {
     final steps = [
       ('1. Crea tu negocio', 'Registra tu pyme y servicios en minutos.'),
       ('2. Comparte tu link', 'Tus clientes reservan sin crear cuenta.'),
-      ('3. Gestiona todo', 'Confirmaciones, recordatorios y ventas en un panel.'),
+      (
+        '3. Gestiona todo',
+        'Confirmaciones, recordatorios y ventas en un panel.',
+      ),
     ];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Cómo funciona',
-            style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800)),
+        const Text(
+          'Cómo funciona',
+          style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800),
+        ),
         const SizedBox(height: 16),
-        ...steps.map((s) => Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: Row(
-                children: [
-                  const Icon(Icons.check_circle, color: Color(0xFF7C3AED)),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(s.$1,
-                            style: const TextStyle(fontWeight: FontWeight.w700)),
-                        const SizedBox(height: 2),
-                        Text(s.$2),
-                      ],
-                    ),
+        ...steps.map(
+          (s) => Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Row(
+              children: [
+                const Icon(Icons.check_circle, color: Color(0xFF7C3AED)),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        s.$1,
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(s.$2),
+                    ],
                   ),
-                ],
-              ),
-            )),
+                ),
+              ],
+            ),
+          ),
+        ),
       ],
     );
   }
@@ -562,22 +735,26 @@ class _FeaturesBullets extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     Widget col(String title, List<String> items) => Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(title,
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-              const SizedBox(height: 10),
-              ...items.map((t) => _Bullet(text: t)),
-            ],
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
           ),
-        );
+          const SizedBox(height: 10),
+          ...items.map((t) => _Bullet(text: t)),
+        ],
+      ),
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Funcionalidades',
-            style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800)),
+        const Text(
+          'Funcionalidades',
+          style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800),
+        ),
         const SizedBox(height: 16),
         Row(
           children: [
@@ -634,8 +811,10 @@ class _Testimonials extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Lo que dicen nuestros clientes',
-            style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800)),
+        const Text(
+          'Lo que dicen nuestros clientes',
+          style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800),
+        ),
         const SizedBox(height: 16),
         Wrap(
           spacing: 16,
@@ -651,8 +830,10 @@ class _Testimonials extends StatelessWidget {
                         children: [
                           Text(t.$1, textAlign: TextAlign.center),
                           const SizedBox(height: 8),
-                          Text(t.$2,
-                              style: const TextStyle(color: Colors.white70)),
+                          Text(
+                            t.$2,
+                            style: const TextStyle(color: Colors.white70),
+                          ),
                         ],
                       ),
                     ),
@@ -676,34 +857,48 @@ class _Faqs extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final faqs = [
-      ('¿Necesito que mis clientes creen cuenta?',
-          'No. Reservan como invitados con sus datos básicos.'),
-      ('¿Puedo cancelar o re-agendar por WhatsApp?',
-          'Sí, con el plan Pro el bot confirma asistencia y ofrece re-agendar.'),
-      ('¿Se integra con Google Calendar?',
-          'Sí, para el negocio (opcional). Para el cliente enviamos .ics adjunto.'),
-      ('¿Puedo ver ventas y comisiones?',
-          'Sí, el panel muestra KPIs y comisiones por staff.'),
+      (
+        '¿Necesito que mis clientes creen cuenta?',
+        'No. Reservan como invitados con sus datos básicos.',
+      ),
+      (
+        '¿Puedo cancelar o re-agendar por WhatsApp?',
+        'Sí, con el plan Pro el bot confirma asistencia y ofrece re-agendar.',
+      ),
+      (
+        '¿Se integra con Google Calendar?',
+        'Sí, para el negocio (opcional). Para el cliente enviamos .ics adjunto.',
+      ),
+      (
+        '¿Puedo ver ventas y comisiones?',
+        'Sí, el panel muestra KPIs y comisiones por staff.',
+      ),
     ];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Preguntas frecuentes',
-            style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800)),
+        const Text(
+          'Preguntas frecuentes',
+          style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800),
+        ),
         const SizedBox(height: 8),
-        ...faqs.map((f) => Card(
-              child: ExpansionTile(
-                title: Text(f.$1),
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Align(
-                        alignment: Alignment.centerLeft, child: Text(f.$2)),
-                  )
-                ],
-              ),
-            )),
+        ...faqs.map(
+          (f) => Card(
+            child: ExpansionTile(
+              title: Text(f.$1),
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(f.$2),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ],
     );
   }
@@ -719,15 +914,26 @@ class _AdaptamosRubros extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final rubros = [
-      'Barberías', 'Peluquerías', 'Salones de belleza', 'Spa',
-      'Psicólogos', 'Nutricionistas', 'Kinesiólogos', 'Clínicas',
-      'Manicure', 'Cejas y pestañas', 'Centros de estética', 'Podología',
+      'Barberías',
+      'Peluquerías',
+      'Salones de belleza',
+      'Spa',
+      'Psicólogos',
+      'Nutricionistas',
+      'Kinesiólogos',
+      'Clínicas',
+      'Manicure',
+      'Cejas y pestañas',
+      'Centros de estética',
+      'Podología',
     ];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Nos adaptamos a tu negocio',
-            style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800)),
+        const Text(
+          'Nos adaptamos a tu negocio',
+          style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800),
+        ),
         const SizedBox(height: 10),
         _AutoScrollChips(items: rubros),
       ],
@@ -808,18 +1014,28 @@ class _PricingSimple extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        const Text('Precios', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800)),
+        const Text(
+          'Precios',
+          style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800),
+        ),
         const SizedBox(height: 12),
-        _PriceCard(title: 'Gratis', price: '\$0', features: const [
-          'Reservas web',
-          'Recordatorio por email',
-        ], onChoose: onChoose),
+        _PriceCard(
+          title: 'Gratis',
+          price: '\$0',
+          features: const ['Reservas web', 'Recordatorio por email'],
+          onChoose: onChoose,
+        ),
         const SizedBox(height: 12),
-        _PriceCard(title: 'Pro', price: '\$X.990/mes', features: const [
-          'WhatsApp + confirmación S/N',
-          'Dashboard ventas & stock',
-          'Google Calendar (negocio)',
-        ], onChoose: onChoose),
+        _PriceCard(
+          title: 'Pro',
+          price: '\$X.990/mes',
+          features: const [
+            'WhatsApp + confirmación S/N',
+            'Dashboard ventas & stock',
+            'Google Calendar (negocio)',
+          ],
+          onChoose: onChoose,
+        ),
       ],
     );
   }
@@ -829,7 +1045,12 @@ class _PriceCard extends StatelessWidget {
   final String title, price;
   final List<String> features;
   final VoidCallback onChoose;
-  const _PriceCard({required this.title, required this.price, required this.features, required this.onChoose});
+  const _PriceCard({
+    required this.title,
+    required this.price,
+    required this.features,
+    required this.onChoose,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -842,22 +1063,45 @@ class _PriceCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 18)),
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 18,
+                    ),
+                  ),
                   const SizedBox(height: 6),
-                  Text(price, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 24)),
+                  Text(
+                    price,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 24,
+                    ),
+                  ),
                   const SizedBox(height: 6),
-                  ...features.map((f) => Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 2),
-                        child: Row(children: [
-                          const Icon(Icons.check, size: 18, color: Color(0xFF7C3AED)),
+                  ...features.map(
+                    (f) => Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 2),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.check,
+                            size: 18,
+                            color: Color(0xFF7C3AED),
+                          ),
                           const SizedBox(width: 6),
                           Text(f),
-                        ]),
-                      )),
+                        ],
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
-            ElevatedButton(onPressed: onChoose, child: const Text('Elegir plan')),
+            ElevatedButton(
+              onPressed: onChoose,
+              child: const Text('Elegir plan'),
+            ),
           ],
         ),
       ),
@@ -889,10 +1133,15 @@ class _FooterCTA extends StatelessWidget {
           constraints: const BoxConstraints(maxWidth: 1100),
           child: Column(
             children: [
-              const Text('Crea tu cuenta e inicia',
-                  style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800)),
+              const Text(
+                'Crea tu cuenta e inicia',
+                style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800),
+              ),
               const SizedBox(height: 10),
-              ElevatedButton(onPressed: onCta, child: const Text('Crea tu cuenta YA')),
+              ElevatedButton(
+                onPressed: onCta,
+                child: const Text('Crea tu cuenta YA'),
+              ),
               const SizedBox(height: 28),
 
               // Footer columns
@@ -921,7 +1170,7 @@ class _FooterCTA extends StatelessWidget {
                     lines: ['Política de privacidad', 'Términos y condiciones'],
                   ),
                 ],
-              )
+              ),
             ],
           ),
         ),
@@ -934,7 +1183,11 @@ class _FooterCol extends StatelessWidget {
   final String title;
   final List<String> lines;
   final bool small;
-  const _FooterCol({required this.title, required this.lines, this.small = false});
+  const _FooterCol({
+    required this.title,
+    required this.lines,
+    this.small = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -943,13 +1196,20 @@ class _FooterCol extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title,
-              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+          Text(
+            title,
+            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+          ),
           const SizedBox(height: 8),
-          ...lines.map((l) => Text(
-                l,
-                style: TextStyle(color: Colors.white.withOpacity(0.85), fontSize: small ? 12 : 14),
-              )),
+          ...lines.map(
+            (l) => Text(
+              l,
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.85),
+                fontSize: small ? 12 : 14,
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -1026,7 +1286,10 @@ class _HoverMenuButtonState extends State<_HoverMenuButton> {
         key: _key,
         child: TextButton(
           onPressed: () {},
-          child: Text(widget.label, style: const TextStyle(color: Colors.white)),
+          child: Text(
+            widget.label,
+            style: const TextStyle(color: Colors.white),
+          ),
         ),
       ),
     );
@@ -1044,16 +1307,26 @@ class _MenuCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF111426),
         borderRadius: BorderRadius.circular(10),
-        boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 12, offset: Offset(0, 8))],
+        boxShadow: const [
+          BoxShadow(
+            color: Colors.black26,
+            blurRadius: 12,
+            offset: Offset(0, 8),
+          ),
+        ],
         border: Border.all(color: const Color(0x22FFFFFF)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: columns
-            .map((c) => Expanded(child: Padding(
+            .map(
+              (c) => Expanded(
+                child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 8),
                   child: c,
-                )))
+                ),
+              ),
+            )
             .toList(),
       ),
     );
@@ -1069,13 +1342,15 @@ class _MenuColumn extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title,
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 1,
-              color: Colors.white70,
-            )),
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 1,
+            color: Colors.white70,
+          ),
+        ),
         const SizedBox(height: 12),
         ...items,
       ],
@@ -1087,7 +1362,11 @@ class _MenuItem extends StatelessWidget {
   final IconData icon;
   final String text;
   final VoidCallback onTap;
-  const _MenuItem({required this.icon, required this.text, required this.onTap});
+  const _MenuItem({
+    required this.icon,
+    required this.text,
+    required this.onTap,
+  });
   @override
   Widget build(BuildContext context) {
     return InkWell(

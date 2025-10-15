@@ -1,4 +1,3 @@
-// lib/main.dart
 import 'package:agendamientos/auth/auth_wrapper.dart';
 import 'package:agendamientos/features/admin_dashboard/admin_dashboard.dart';
 import 'package:flutter/material.dart';
@@ -12,9 +11,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   runApp(const MyApp());
 }
 
@@ -44,15 +41,14 @@ class MyApp extends StatelessWidget {
         Locale('es', ''), // Español
       ],
 
-      // En lugar de `initialRoute`, usamos `home` para que el AuthWrapper decida.
-      home: const LandingPage(), // Siempre empezamos en la Landing
+      // Volvemos a la configuración anterior donde la LandingPage es el inicio.
+      home: const LandingPage(),
 
       // Mantenemos las rutas para la navegación manual
       routes: {
-        // No necesitamos '/', ya que 'home' lo maneja.
         '/auth': (_) => const AuthPage(),
         '/dashboard': (_) => const AdminDashboardPage(),
-        '/wrapper': (_) => const AuthWrapper(), // Ruta para el guardián
+        '/wrapper': (_) => const AuthWrapper(),
       },
     );
   }

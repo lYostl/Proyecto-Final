@@ -32,10 +32,12 @@ dependencies:
     sdk: flutter
   flutter_localizations:
     sdk: flutter
-  firebase_core: ^3.4.0
-  firebase_auth: ^5.2.0
+  firebase_core: ^2.27.0
+  firebase_auth: ^4.17.8
   table_calendar: ^3.1.0 # calendario
   intl: ^0.20.2
+  cloud_firestore: ^4.15.8 
+
 
 
 

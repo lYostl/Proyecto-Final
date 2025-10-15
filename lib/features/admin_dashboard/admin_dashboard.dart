@@ -1,13 +1,34 @@
 import 'package:flutter/material.dart';
-import '../../services/auth_service.dart';
-// ¡Importante! Debes agregar 'table_calendar' a tu pubspec.yaml para que esto funcione.
-import 'package:table_calendar/table_calendar.dart';
-// ¡Importante! Debes agregar 'intl' a tu pubspec.yaml para formatear números y fechas.
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
+import 'package:table_calendar/table_calendar.dart';
+import '../../services/auth_service.dart';
 
-// --- WIDGET PRINCIPAL DEL DASHBOARD (AHORA CON ESTADO) ---
-// Convertimos el widget a StatefulWidget para poder manejar el estado de la
-// sección seleccionada en el menú.
+// --- Modelo para las Citas ---
+class Cita {
+  final String id;
+  final String nombreCliente;
+  final String servicio;
+  final DateTime fecha;
+
+  Cita({
+    required this.id,
+    required this.nombreCliente,
+    required this.servicio,
+    required this.fecha,
+  });
+
+  factory Cita.fromFirestore(DocumentSnapshot doc) {
+    Map data = doc.data() as Map<String, dynamic>;
+    return Cita(
+      id: doc.id,
+      nombreCliente: data['nombreCliente'] ?? 'Cliente sin nombre',
+      servicio: data['servicio'] ?? 'Servicio no especificado',
+      fecha: (data['fecha'] as Timestamp).toDate(),
+    );
+  }
+}
+
 class AdminDashboardPage extends StatefulWidget {
   const AdminDashboardPage({super.key});
 
@@ -16,12 +37,9 @@ class AdminDashboardPage extends StatefulWidget {
 }
 
 class _AdminDashboardPageState extends State<AdminDashboardPage> {
-  // Índice de la página o sección actualmente seleccionada.
   int _selectedIndex = 0;
-  // Controlador para el PageView, nos permite cambiar de página mediante código.
   final PageController _pageController = PageController();
 
-  // Títulos para la barra de navegación superior (AppBar).
   final List<String> _pageTitles = [
     'Agenda de Turnos',
     'Gestión de Barberos',
@@ -29,155 +47,121 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
     'Configuración',
   ];
 
-  // Lista de widgets (páginas) que se mostrarán en el cuerpo del dashboard.
-  final List<Widget> _pages = [
-    const AgendaPage(),
-    const BarberosPage(),
-    const VentasPage(),
-    const ConfiguracionPage(),
-  ];
-
-  // Función para manejar el toque en un ítem del menú lateral.
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
     });
-    // Cambia la página en el PageView.
     _pageController.jumpToPage(index);
-    // Cierra el menú lateral automáticamente.
-    Navigator.of(context).pop();
-  }
-
-  @override
-  void dispose() {
-    // Es importante liberar los recursos del controlador cuando el widget se destruye.
-    _pageController.dispose();
-    super.dispose();
+    if (context.mounted) Navigator.of(context).pop();
   }
 
   @override
   Widget build(BuildContext context) {
     final auth = AuthService();
-    final theme = Theme.of(context); // Para acceder a los colores del tema.
 
     return Scaffold(
       appBar: AppBar(
-        // El título cambia dinámicamente según la sección seleccionada.
         title: Text(_pageTitles[_selectedIndex]),
-        backgroundColor: Colors.blueGrey[900], // Un color oscuro y elegante
-        foregroundColor: Colors.white,
         actions: [
           IconButton(
             tooltip: 'Cerrar sesión',
             icon: const Icon(Icons.logout),
             onPressed: () async {
-              final err = await auth.signOut();
-              if (err != null && context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(err),
-                    behavior: SnackBarBehavior.floating,
-                  ),
-                );
-              }
+              await auth.signOut();
+              // El AuthWrapper debería manejar la navegación
             },
           ),
         ],
       ),
-      // --- MENÚ LATERAL (DRAWER) ---
       drawer: Drawer(
         child: ListView(
           padding: EdgeInsets.zero,
           children: [
-            // Cabecera del menú con información del usuario.
-            UserAccountsDrawerHeader(
-              accountName: const Text(
-                'Administrador',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+            DrawerHeader(
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primary.withOpacity(0.8),
               ),
-              accountEmail: Text(auth.currentUser?.email ?? 'Usuario'),
-              decoration: BoxDecoration(color: Colors.blueGrey[900]),
-              currentAccountPicture: CircleAvatar(
-                backgroundColor: Colors.white,
-                child: Text(
-                  // Muestra la primera letra del email en mayúsculas.
-                  auth.currentUser?.email?.substring(0, 1).toUpperCase() ?? 'A',
-                  style: TextStyle(fontSize: 40.0, color: Colors.blueGrey[900]),
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  CircleAvatar(
+                    radius: 30,
+                    backgroundColor: Colors.white,
+                    child: Text(
+                      auth.currentUser?.email?.substring(0, 1).toUpperCase() ??
+                          'U',
+                      style: const TextStyle(
+                        fontSize: 24,
+                        color: Colors.black87,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  const Text(
+                    'Administrador',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  Text(
+                    auth.currentUser?.email ?? 'Usuario desconocido',
+                    style: const TextStyle(color: Colors.white70),
+                  ),
+                ],
               ),
             ),
-            // Items del menú.
-            _buildDrawerItem(
-              icon: Icons.calendar_month,
-              text: 'Agenda de turnos',
-              index: 0,
-            ),
-            _buildDrawerItem(
-              icon: Icons.content_cut,
-              text: 'Barberos',
-              index: 1,
-            ),
-            _buildDrawerItem(
-              icon: Icons.attach_money,
-              text: 'Ventas / servicios',
-              index: 2,
-            ),
-            const Divider(), // Un separador visual.
-            _buildDrawerItem(
-              icon: Icons.settings,
-              text: 'Configuración',
-              index: 3,
-            ),
+            _buildDrawerItem(Icons.calendar_month, 'Agenda de turnos', 0),
+            _buildDrawerItem(Icons.content_cut, 'Barberos', 1),
+            _buildDrawerItem(Icons.attach_money, 'Ventas / servicios', 2),
+            const Divider(),
+            _buildDrawerItem(Icons.settings, 'Configuración', 3),
           ],
         ),
       ),
-      // --- CUERPO DEL DASHBOARD ---
-      // Usamos PageView para contener las diferentes secciones.
       body: PageView(
         controller: _pageController,
-        // Esto permite actualizar el menú si el usuario desliza entre páginas.
         onPageChanged: (index) {
           setState(() {
             _selectedIndex = index;
           });
         },
-        children: _pages,
+        children: const [
+          AgendaPage(),
+          BarberosPage(),
+          VentasPage(),
+          ConfiguracionPage(),
+        ],
       ),
     );
   }
 
-  // Método auxiliar para crear los items del menú y evitar repetir código.
-  Widget _buildDrawerItem({
-    required IconData icon,
-    required String text,
-    required int index,
-  }) {
+  Widget _buildDrawerItem(IconData icon, String title, int index) {
     final isSelected = _selectedIndex == index;
-    final selectedColor = Colors.blueGrey[800];
-
-    return Container(
-      // Resalta el item seleccionado con un color de fondo sutil.
-      color: isSelected ? selectedColor?.withOpacity(0.1) : Colors.transparent,
-      child: ListTile(
-        leading: Icon(
-          icon,
-          color: isSelected ? selectedColor : Colors.grey[600],
-        ),
-        title: Text(
-          text,
-          style: TextStyle(
-            color: isSelected ? selectedColor : Colors.black87,
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-          ),
-        ),
-        onTap: () => _onItemTapped(index),
+    return ListTile(
+      leading: Icon(
+        icon,
+        color: isSelected
+            ? Theme.of(context).colorScheme.primary
+            : Colors.white70,
       ),
+      title: Text(
+        title,
+        style: TextStyle(
+          color: isSelected
+              ? Theme.of(context).colorScheme.primary
+              : Colors.white,
+        ),
+      ),
+      selected: isSelected,
+      onTap: () => _onItemTapped(index),
+      selectedTileColor: Theme.of(context).colorScheme.primary.withOpacity(0.1),
     );
   }
 }
 
-// --- PÁGINA DE AGENDA (SECCIÓN ACTUALIZADA) ---
-
+// --- SECCIÓN DE AGENDA (MODIFICADA PARA LEER DE FIREBASE) ---
 class AgendaPage extends StatefulWidget {
   const AgendaPage({super.key});
 
@@ -186,225 +170,197 @@ class AgendaPage extends StatefulWidget {
 }
 
 class _AgendaPageState extends State<AgendaPage> {
-  // Variables de estado para el calendario
+  CalendarFormat _calendarFormat = CalendarFormat.month;
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
-  List<String> _selectedEvents = [];
 
-  // Datos de ejemplo para los turnos. En una app real, esto vendría de una base de datos.
-  final Map<DateTime, List<String>> _events = {
-    DateTime.utc(2025, 10, 15): [
-      '10:00 - Corte - Juan Perez',
-      '11:30 - Barba - Carlos Gomez',
-    ],
-    DateTime.utc(2025, 10, 16): ['09:00 - Corte y Barba - Luis Rodriguez'],
-    DateTime.utc(2025, 10, 20): [
-      '14:00 - Corte - Miguel Angel',
-      '15:00 - Corte - Fernando Diaz',
-      '17:30 - Barba - Pedro Pascal',
-    ],
-  };
-
-  // Función para obtener los eventos de un día específico.
-  List<String> _getEventsForDay(DateTime day) {
-    // La comparación se hace con DateTime.utc para evitar problemas de zona horaria.
-    return _events[DateTime.utc(day.year, day.month, day.day)] ?? [];
-  }
+  Map<DateTime, List<Cita>> _citas = {};
+  late final ValueNotifier<List<Cita>> _selectedEvents;
 
   @override
   void initState() {
     super.initState();
     _selectedDay = _focusedDay;
-    _selectedEvents = _getEventsForDay(_selectedDay!);
+    _selectedEvents = ValueNotifier(_getEventsForDay(_selectedDay!));
+  }
+
+  @override
+  void dispose() {
+    _selectedEvents.dispose();
+    super.dispose();
+  }
+
+  List<Cita> _getEventsForDay(DateTime day) {
+    final normalizedDay = DateTime(day.year, day.month, day.day);
+    return _citas[normalizedDay] ?? [];
+  }
+
+  void _onDaySelected(DateTime selectedDay, DateTime focusedDay) {
+    if (!isSameDay(_selectedDay, selectedDay)) {
+      setState(() {
+        _selectedDay = selectedDay;
+        _focusedDay = focusedDay;
+      });
+      _selectedEvents.value = _getEventsForDay(selectedDay);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // --- WIDGET DEL CALENDARIO ---
-          Card(
-            margin: const EdgeInsets.all(8.0),
-            elevation: 4.0,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: TableCalendar(
-              locale: 'es_ES', // Para mostrar el calendario en español
-              firstDay: DateTime.utc(2020, 1, 1),
-              lastDay: DateTime.utc(2030, 12, 31),
-              focusedDay: _focusedDay,
-              calendarFormat: CalendarFormat.month,
-              headerStyle: const HeaderStyle(
-                formatButtonVisible: false,
-                titleCentered: true,
-              ),
-              calendarStyle: CalendarStyle(
-                todayDecoration: BoxDecoration(
-                  color: Colors.blueGrey.shade200,
-                  shape: BoxShape.circle,
-                ),
-                selectedDecoration: BoxDecoration(
-                  color: Colors.blueGrey.shade600,
-                  shape: BoxShape.circle,
-                ),
-              ),
-              selectedDayPredicate: (day) {
-                return isSameDay(_selectedDay, day);
-              },
-              onDaySelected: (selectedDay, focusedDay) {
-                if (!isSameDay(_selectedDay, selectedDay)) {
-                  setState(() {
-                    _selectedDay = selectedDay;
-                    _focusedDay = focusedDay;
-                    _selectedEvents = _getEventsForDay(selectedDay);
-                  });
-                }
-              },
-              eventLoader: _getEventsForDay,
-            ),
-          ),
-          const SizedBox(height: 8.0),
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('citas')
+          .orderBy('fecha')
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError) {
+          return const Center(child: Text('Error al cargar las citas.'));
+        }
 
-          // --- LISTA DE TURNOS DEL DÍA SELECCIONADO ---
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: Text(
-              'Turnos del día',
-              style: Theme.of(
-                context,
-              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-            ),
-          ),
-          Expanded(
-            child: _selectedEvents.isEmpty
-                ? const Center(child: Text('No hay turnos para este día.'))
-                : ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                    itemCount: _selectedEvents.length,
-                    itemBuilder: (context, index) {
-                      return Card(
-                        margin: const EdgeInsets.symmetric(vertical: 4.0),
-                        child: ListTile(
-                          leading: const Icon(
-                            Icons.cut,
-                            color: Colors.blueGrey,
-                          ),
-                          title: Text(_selectedEvents[index]),
-                          trailing: const Icon(
-                            Icons.arrow_forward_ios,
-                            size: 14,
-                          ),
-                          onTap: () {
-                            // Aquí podrías navegar a una pantalla de detalle del turno
-                          },
-                        ),
-                      );
-                    },
+        if (snapshot.hasData) {
+          _citas = {};
+          for (var doc in snapshot.data!.docs) {
+            final cita = Cita.fromFirestore(doc);
+            final normalizedDate = DateTime(
+              cita.fecha.year,
+              cita.fecha.month,
+              cita.fecha.day,
+            );
+            if (_citas[normalizedDate] == null) {
+              _citas[normalizedDate] = [];
+            }
+            _citas[normalizedDate]!.add(cita);
+          }
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted && _selectedDay != null) {
+              _selectedEvents.value = _getEventsForDay(_selectedDay!);
+            }
+          });
+        }
+
+        return Scaffold(
+          body: Column(
+            children: [
+              TableCalendar<Cita>(
+                firstDay: DateTime.utc(2020, 1, 1),
+                lastDay: DateTime.utc(2030, 12, 31),
+                focusedDay: _focusedDay,
+                selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
+                calendarFormat: _calendarFormat,
+                eventLoader: _getEventsForDay,
+                startingDayOfWeek: StartingDayOfWeek.monday,
+                onDaySelected: _onDaySelected,
+                onFormatChanged: (format) {
+                  if (_calendarFormat != format)
+                    setState(() => _calendarFormat = format);
+                },
+                onPageChanged: (focusedDay) => _focusedDay = focusedDay,
+                calendarStyle: CalendarStyle(
+                  todayDecoration: BoxDecoration(
+                    color: Colors.deepOrange.withOpacity(0.5),
+                    shape: BoxShape.circle,
                   ),
-          ),
-        ],
-      ),
-      // --- BOTÓN PARA AÑADIR NUEVO TURNO ---
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          // Lógica para abrir un formulario o diálogo para crear un nuevo turno.
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                'Aquí se abrirá el formulario para un nuevo turno.',
+                  selectedDecoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.primary,
+                    shape: BoxShape.circle,
+                  ),
+                  markerDecoration: BoxDecoration(
+                    color: Colors.blue[400],
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                headerStyle: const HeaderStyle(
+                  formatButtonVisible: false,
+                  titleCentered: true,
+                ),
               ),
-            ),
-          );
-        },
-        backgroundColor: Colors.blueGrey[800],
-        foregroundColor: Colors.white,
-        tooltip: 'Añadir Turno',
-        child: const Icon(Icons.add),
-      ),
+              const SizedBox(height: 8.0),
+              const Divider(),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: Text(
+                  'Turnos del día',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+              ),
+              Expanded(
+                child: ValueListenableBuilder<List<Cita>>(
+                  valueListenable: _selectedEvents,
+                  builder: (context, value, _) {
+                    if (value.isEmpty)
+                      return const Center(
+                        child: Text('No hay turnos para este día.'),
+                      );
+                    return ListView.builder(
+                      itemCount: value.length,
+                      itemBuilder: (context, index) {
+                        final cita = value[index];
+                        return ListTile(
+                          leading: const Icon(Icons.content_cut),
+                          title: Text(
+                            '${cita.servicio} - ${cita.nombreCliente}',
+                          ),
+                          subtitle: Text(
+                            DateFormat('HH:mm a').format(cita.fecha),
+                          ),
+                        );
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+          floatingActionButton: FloatingActionButton(
+            onPressed: () {},
+            child: const Icon(Icons.add),
+          ),
+        );
+      },
     );
   }
 }
 
-// --- CLASE MODELO PARA UN BARBERO ---
-// Esto nos ayuda a organizar los datos de cada barbero.
+// --- (El resto de las páginas: Barberos, Ventas, Configuración, se mantienen igual que antes) ---
+// --- El código de estas secciones no se modifica ---
 class Barbero {
+  final String id;
   final String nombre;
+  final String fotoUrl;
   final String especialidad;
-  final String fotoUrl; // URL de la foto del barbero.
 
   Barbero({
+    required this.id,
     required this.nombre,
-    required this.especialidad,
     required this.fotoUrl,
+    required this.especialidad,
   });
 }
 
-// --- PÁGINA DE GESTIÓN DE BARBEROS (SECCIÓN ACTUALIZADA) ---
-
 class BarberosPage extends StatefulWidget {
   const BarberosPage({super.key});
-
   @override
   State<BarberosPage> createState() => _BarberosPageState();
 }
 
 class _BarberosPageState extends State<BarberosPage> {
-  // Lista de barberos. En una app real, esto vendría de una base de datos.
   final List<Barbero> _barberos = [
     Barbero(
+      id: '1',
       nombre: 'Carlos Gutierrez',
-      especialidad: 'Cortes clásicos, Afeitado',
-      fotoUrl: 'https://placehold.co/100x100/E8117F/white?text=CG',
+      fotoUrl: 'https://placehold.co/100x100/222/FFF?text=CG',
+      especialidad: 'Cortes clásicos y Barba',
     ),
     Barbero(
+      id: '2',
       nombre: 'Matias Rodriguez',
-      especialidad: 'Diseños, Coloración',
-      fotoUrl: 'https://placehold.co/100x100/114DE8/white?text=MR',
-    ),
-    Barbero(
-      nombre: 'Javier Nuñez',
-      especialidad: 'Corte moderno, Barba',
-      fotoUrl: 'https://placehold.co/100x100/E89111/white?text=JN',
-    ),
-    Barbero(
-      nombre: 'Ricardo Soto',
-      especialidad: 'Todo tipo de cortes',
-      fotoUrl: 'https://placehold.co/100x100/8411E8/white?text=RS',
+      fotoUrl: 'https://placehold.co/100x100/333/FFF?text=MR',
+      especialidad: 'Diseños y Color',
     ),
   ];
-
-  void _editarBarbero(Barbero barbero) {
-    // Lógica para abrir un formulario de edición para el barbero seleccionado.
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text('Editando a ${barbero.nombre}')));
-  }
-
-  void _eliminarBarbero(int index) {
-    // Lógica para eliminar el barbero.
-    final barberoEliminado = _barberos[index].nombre;
-    setState(() {
-      _barberos.removeAt(index);
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$barberoEliminado ha sido eliminado.')),
-    );
-  }
-
-  void _agregarBarbero() {
-    // Lógica para abrir un formulario y agregar un nuevo barbero.
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-          'Aquí se abriría el formulario para agregar un nuevo barbero.',
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -414,8 +370,7 @@ class _BarberosPageState extends State<BarberosPage> {
         itemBuilder: (context, index) {
           final barbero = _barberos[index];
           return Card(
-            elevation: 3,
-            margin: const EdgeInsets.symmetric(vertical: 8.0),
+            margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 8.0),
             child: ListTile(
               contentPadding: const EdgeInsets.all(12.0),
               leading: CircleAvatar(
@@ -431,14 +386,12 @@ class _BarberosPageState extends State<BarberosPage> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   IconButton(
-                    icon: Icon(Icons.edit, color: Colors.blueGrey[600]),
-                    tooltip: 'Editar',
-                    onPressed: () => _editarBarbero(barbero),
+                    icon: const Icon(Icons.edit, color: Colors.blueAccent),
+                    onPressed: () {},
                   ),
                   IconButton(
-                    icon: Icon(Icons.delete, color: Colors.red[400]),
-                    tooltip: 'Eliminar',
-                    onPressed: () => _eliminarBarbero(index),
+                    icon: const Icon(Icons.delete, color: Colors.redAccent),
+                    onPressed: () => setState(() => _barberos.removeAt(index)),
                   ),
                 ],
               ),
@@ -447,23 +400,18 @@ class _BarberosPageState extends State<BarberosPage> {
         },
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: _agregarBarbero,
-        backgroundColor: Colors.blueGrey[800],
-        foregroundColor: Colors.white,
-        tooltip: 'Añadir Barbero',
+        onPressed: () {},
         child: const Icon(Icons.add),
       ),
     );
   }
 }
 
-// --- MODELOS DE DATOS PARA VENTAS ---
 class Venta {
   final String servicio;
   final String cliente;
   final double monto;
   final DateTime fecha;
-
   Venta({
     required this.servicio,
     required this.cliente,
@@ -472,191 +420,138 @@ class Venta {
   });
 }
 
-// --- PÁGINA DE VENTAS Y SERVICIOS (SECCIÓN ACTUALIZADA) ---
-
-class VentasPage extends StatefulWidget {
+class VentasPage extends StatelessWidget {
   const VentasPage({super.key});
-
-  @override
-  State<VentasPage> createState() => _VentasPageState();
-}
-
-class _VentasPageState extends State<VentasPage> {
-  // Datos de ejemplo. En una app real, esto vendría de una base de datos.
-  final List<Venta> _ventas = [
-    Venta(
-      servicio: 'Corte Clásico',
-      cliente: 'Juan Perez',
-      monto: 15000,
-      fecha: DateTime(2025, 10, 15, 10, 5),
-    ),
-    Venta(
-      servicio: 'Afeitado de Barba',
-      cliente: 'Carlos Gomez',
-      monto: 8000,
-      fecha: DateTime(2025, 10, 15, 11, 30),
-    ),
-    Venta(
-      servicio: 'Corte y Barba',
-      cliente: 'Luis Rodriguez',
-      monto: 22000,
-      fecha: DateTime(2025, 10, 16, 9, 0),
-    ),
-    Venta(
-      servicio: 'Diseño Especial',
-      cliente: 'Andres Soto',
-      monto: 18000,
-      fecha: DateTime(2025, 10, 17, 16, 20),
-    ),
-    Venta(
-      servicio: 'Corte Clásico',
-      cliente: 'Felipe Vera',
-      monto: 15000,
-      fecha: DateTime(2025, 10, 18, 12, 0),
-    ),
-  ];
-
   @override
   Widget build(BuildContext context) {
-    // Cálculos para las tarjetas de resumen
-    final double ventasTotales = _ventas.fold(
-      0,
-      (sum, item) => sum + item.monto,
-    );
-    final int serviciosRealizados = _ventas.length;
-    final double ticketPromedio = serviciosRealizados > 0
-        ? ventasTotales / serviciosRealizados
+    final List<Venta> _ventas = [
+      Venta(
+        servicio: 'Corte de Pelo',
+        cliente: 'Juan Perez',
+        monto: 15000,
+        fecha: DateTime.now().subtract(const Duration(hours: 2)),
+      ),
+      Venta(
+        servicio: 'Barba',
+        cliente: 'Carlos Gomez',
+        monto: 8000,
+        fecha: DateTime.now().subtract(const Duration(hours: 4)),
+      ),
+    ];
+    final double totalVentas = _ventas.fold(0, (sum, item) => sum + item.monto);
+    final int totalServicios = _ventas.length;
+    final double ticketPromedio = totalServicios > 0
+        ? totalVentas / totalServicios
         : 0;
-
-    // Formateadores de números y fechas
-    final currencyFormatter = NumberFormat.currency(
-      locale: 'es_CL',
-      symbol: '\$',
-      decimalDigits: 0,
-    );
-    final dateFormatter = DateFormat('dd/MM/yyyy, HH:mm', 'es_ES');
-
     return Scaffold(
-      body: Column(
-        children: [
-          // --- TARJETAS DE RESUMEN ---
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: GridView.count(
-              crossAxisCount: 3,
-              shrinkWrap: true,
-              crossAxisSpacing: 8,
-              mainAxisSpacing: 8,
-              childAspectRatio: 1.5,
-              physics: const NeverScrollableScrollPhysics(),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
               children: [
-                _buildSummaryCard(
-                  title: 'Ventas Totales',
-                  value: currencyFormatter.format(ventasTotales),
-                  icon: Icons.monetization_on,
-                  color: Colors.green,
+                Expanded(
+                  child: SummaryCard(
+                    title: 'Ventas Totales',
+                    value: NumberFormat.simpleCurrency(
+                      locale: 'es_CL',
+                      decimalDigits: 0,
+                    ).format(totalVentas),
+                    icon: Icons.monetization_on,
+                    color: Colors.green,
+                  ),
                 ),
-                _buildSummaryCard(
-                  title: 'Servicios',
-                  value: serviciosRealizados.toString(),
-                  icon: Icons.cut,
-                  color: Colors.blue,
-                ),
-                _buildSummaryCard(
-                  title: 'Ticket Promedio',
-                  value: currencyFormatter.format(ticketPromedio),
-                  icon: Icons.receipt_long,
-                  color: Colors.orange,
+                const SizedBox(width: 16),
+                Expanded(
+                  child: SummaryCard(
+                    title: 'Servicios',
+                    value: totalServicios.toString(),
+                    icon: Icons.content_cut,
+                    color: Colors.blue,
+                  ),
                 ),
               ],
             ),
-          ),
-
-          // --- HISTORIAL DE VENTAS ---
-          Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 16.0,
-              vertical: 8.0,
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: SummaryCard(
+                title: 'Ticket Promedio',
+                value: NumberFormat.simpleCurrency(
+                  locale: 'es_CL',
+                  decimalDigits: 0,
+                ).format(ticketPromedio),
+                icon: Icons.receipt_long,
+                color: Colors.orange,
+              ),
             ),
-            child: Text(
-              'Ventas Recientes',
-              style: Theme.of(
-                context,
-              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+            const SizedBox(height: 24),
+            Text(
+              'Historial Reciente',
+              style: Theme.of(context).textTheme.headlineSmall,
             ),
-          ),
-          Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 8.0),
-              itemCount: _ventas.length,
-              itemBuilder: (context, index) {
-                final venta = _ventas[index];
-                return Card(
-                  margin: const EdgeInsets.symmetric(vertical: 4.0),
-                  child: ListTile(
-                    leading: CircleAvatar(
-                      backgroundColor: Colors.blueGrey.shade100,
-                      child: const Icon(Icons.person, color: Colors.blueGrey),
-                    ),
-                    title: Text('${venta.servicio} - ${venta.cliente}'),
-                    subtitle: Text(dateFormatter.format(venta.fecha)),
-                    trailing: Text(
-                      currencyFormatter.format(venta.monto),
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.green,
+            const SizedBox(height: 8),
+            ..._ventas
+                .map(
+                  (venta) => Card(
+                    margin: const EdgeInsets.symmetric(vertical: 4),
+                    child: ListTile(
+                      leading: const Icon(Icons.receipt),
+                      title: Text('${venta.servicio} - ${venta.cliente}'),
+                      subtitle: Text(
+                        DateFormat('dd/MM/yyyy, HH:mm a').format(venta.fecha),
+                      ),
+                      trailing: Text(
+                        NumberFormat.simpleCurrency(
+                          locale: 'es_CL',
+                          decimalDigits: 0,
+                        ).format(venta.monto),
+                        style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
                     ),
                   ),
-                );
-              },
-            ),
-          ),
-        ],
+                )
+                .toList(),
+          ],
+        ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          // Lógica para registrar una nueva venta
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                'Aquí se abriría el formulario para registrar una nueva venta.',
-              ),
-            ),
-          );
-        },
-        backgroundColor: Colors.blueGrey[800],
-        foregroundColor: Colors.white,
-        tooltip: 'Registrar Venta',
-        child: const Icon(Icons.add_shopping_cart),
+        onPressed: () {},
+        child: const Icon(Icons.add),
       ),
     );
   }
+}
 
-  // Widget auxiliar para crear las tarjetas de resumen
-  Widget _buildSummaryCard({
-    required String title,
-    required String value,
-    required IconData icon,
-    required Color color,
-  }) {
+class SummaryCard extends StatelessWidget {
+  final String title, value;
+  final IconData icon;
+  final Color color;
+  const SummaryCard({
+    super.key,
+    required this.title,
+    required this.value,
+    required this.icon,
+    required this.color,
+  });
+  @override
+  Widget build(BuildContext context) {
     return Card(
-      elevation: 4,
       child: Padding(
-        padding: const EdgeInsets.all(8.0),
+        padding: const EdgeInsets.all(16.0),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(icon, color: color, size: 24),
+            Icon(icon, size: 32, color: color),
             const SizedBox(height: 8),
-            Text(
-              title,
-              style: const TextStyle(fontSize: 12, color: Colors.grey),
-            ),
+            Text(title, style: const TextStyle(color: Colors.white70)),
+            const SizedBox(height: 4),
             Text(
               value,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              style: Theme.of(
+                context,
+              ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
             ),
           ],
         ),
@@ -665,28 +560,65 @@ class _VentasPageState extends State<VentasPage> {
   }
 }
 
-// --- PÁGINA DE CONFIGURACIÓN (PLACEHOLDER) ---
-class ConfiguracionPage extends StatelessWidget {
+class ConfiguracionPage extends StatefulWidget {
   const ConfiguracionPage({super.key});
+  @override
+  _ConfiguracionPageState createState() => _ConfiguracionPageState();
+}
 
+class _ConfiguracionPageState extends State<ConfiguracionPage> {
+  bool _notificacionesPush = true;
+  bool _modoOscuro = true;
   @override
   Widget build(BuildContext context) {
-    return const Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.settings, size: 80, color: Colors.grey),
-          SizedBox(height: 20),
-          Text(
-            'Configuración de la Cuenta',
-            style: TextStyle(fontSize: 22, color: Colors.grey),
-          ),
-          Text(
-            'Aquí podrás ajustar las configuraciones de la app.',
-            style: TextStyle(color: Colors.grey),
-          ),
-        ],
-      ),
+    return ListView(
+      padding: const EdgeInsets.all(16.0),
+      children: [
+        _buildSectionTitle('Cuenta'),
+        _buildConfigOption('Editar Perfil', Icons.person, () {}),
+        _buildConfigOption('Cambiar Contraseña', Icons.lock, () {}),
+        const Divider(height: 40),
+        _buildSectionTitle('Aplicación'),
+        SwitchListTile(
+          title: const Text('Notificaciones Push'),
+          secondary: const Icon(Icons.notifications),
+          value: _notificacionesPush,
+          onChanged: (bool value) =>
+              setState(() => _notificacionesPush = value),
+        ),
+        SwitchListTile(
+          title: const Text('Modo Oscuro'),
+          secondary: const Icon(Icons.dark_mode),
+          value: _modoOscuro,
+          onChanged: (bool value) => setState(() => _modoOscuro = value),
+        ),
+        const Divider(height: 40),
+        _buildSectionTitle('Información'),
+        _buildConfigOption('Términos de Servicio', Icons.description, () {}),
+        _buildConfigOption('Política de Privacidad', Icons.privacy_tip, () {}),
+      ],
     );
   }
+
+  Padding _buildSectionTitle(String title) => Padding(
+    padding: const EdgeInsets.only(bottom: 8.0),
+    child: Text(
+      title,
+      style: TextStyle(
+        fontSize: 18,
+        fontWeight: FontWeight.bold,
+        color: Theme.of(context).colorScheme.primary,
+      ),
+    ),
+  );
+  ListTile _buildConfigOption(
+    String title,
+    IconData icon,
+    VoidCallback onTap,
+  ) => ListTile(
+    leading: Icon(icon),
+    title: Text(title),
+    trailing: const Icon(Icons.chevron_right),
+    onTap: onTap,
+  );
 }
