@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
+// ¡Importante! Debes agregar 'table_calendar' a tu pubspec.yaml para que esto funcione.
+import 'package:table_calendar/table_calendar.dart';
 
 // --- WIDGET PRINCIPAL DEL DASHBOARD (AHORA CON ESTADO) ---
 // Convertimos el widget a StatefulWidget para poder manejar el estado de la
@@ -172,33 +174,160 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
   }
 }
 
-// --- PÁGINAS DE RELLENO (PLACEHOLDERS) PARA CADA SECCIÓN ---
-// Aquí es donde desarrollarás el contenido específico de cada parte del dashboard.
+// --- PÁGINA DE AGENDA (SECCIÓN ACTUALIZADA) ---
 
-class AgendaPage extends StatelessWidget {
+class AgendaPage extends StatefulWidget {
   const AgendaPage({super.key});
 
   @override
+  State<AgendaPage> createState() => _AgendaPageState();
+}
+
+class _AgendaPageState extends State<AgendaPage> {
+  // Variables de estado para el calendario
+  DateTime _focusedDay = DateTime.now();
+  DateTime? _selectedDay;
+  List<String> _selectedEvents = [];
+
+  // Datos de ejemplo para los turnos. En una app real, esto vendría de una base de datos.
+  final Map<DateTime, List<String>> _events = {
+    DateTime.utc(2025, 10, 15): [
+      '10:00 - Corte - Juan Perez',
+      '11:30 - Barba - Carlos Gomez',
+    ],
+    DateTime.utc(2025, 10, 16): ['09:00 - Corte y Barba - Luis Rodriguez'],
+    DateTime.utc(2025, 10, 20): [
+      '14:00 - Corte - Miguel Angel',
+      '15:00 - Corte - Fernando Diaz',
+      '17:30 - Barba - Pedro Pascal',
+    ],
+  };
+
+  // Función para obtener los eventos de un día específico.
+  List<String> _getEventsForDay(DateTime day) {
+    // La comparación se hace con DateTime.utc para evitar problemas de zona horaria.
+    return _events[DateTime.utc(day.year, day.month, day.day)] ?? [];
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedDay = _focusedDay;
+    _selectedEvents = _getEventsForDay(_selectedDay!);
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return const Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+    return Scaffold(
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.calendar_today, size: 80, color: Colors.grey),
-          SizedBox(height: 20),
-          Text(
-            'Gestión de Agenda y Turnos',
-            style: TextStyle(fontSize: 22, color: Colors.grey),
+          // --- WIDGET DEL CALENDARIO ---
+          Card(
+            margin: const EdgeInsets.all(8.0),
+            elevation: 4.0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: TableCalendar(
+              locale: 'es_ES', // Para mostrar el calendario en español
+              firstDay: DateTime.utc(2020, 1, 1),
+              lastDay: DateTime.utc(2030, 12, 31),
+              focusedDay: _focusedDay,
+              calendarFormat: CalendarFormat.month,
+              headerStyle: const HeaderStyle(
+                formatButtonVisible: false,
+                titleCentered: true,
+              ),
+              calendarStyle: CalendarStyle(
+                todayDecoration: BoxDecoration(
+                  color: Colors.blueGrey.shade200,
+                  shape: BoxShape.circle,
+                ),
+                selectedDecoration: BoxDecoration(
+                  color: Colors.blueGrey.shade600,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              selectedDayPredicate: (day) {
+                return isSameDay(_selectedDay, day);
+              },
+              onDaySelected: (selectedDay, focusedDay) {
+                if (!isSameDay(_selectedDay, selectedDay)) {
+                  setState(() {
+                    _selectedDay = selectedDay;
+                    _focusedDay = focusedDay;
+                    _selectedEvents = _getEventsForDay(selectedDay);
+                  });
+                }
+              },
+              eventLoader: _getEventsForDay,
+            ),
           ),
-          Text(
-            'Aquí se mostrará el calendario de citas.',
-            style: TextStyle(color: Colors.grey),
+          const SizedBox(height: 8.0),
+
+          // --- LISTA DE TURNOS DEL DÍA SELECCIONADO ---
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: Text(
+              'Turnos del día',
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+            ),
+          ),
+          Expanded(
+            child: _selectedEvents.isEmpty
+                ? const Center(child: Text('No hay turnos para este día.'))
+                : ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                    itemCount: _selectedEvents.length,
+                    itemBuilder: (context, index) {
+                      return Card(
+                        margin: const EdgeInsets.symmetric(vertical: 4.0),
+                        child: ListTile(
+                          leading: const Icon(
+                            Icons.cut,
+                            color: Colors.blueGrey,
+                          ),
+                          title: Text(_selectedEvents[index]),
+                          trailing: const Icon(
+                            Icons.arrow_forward_ios,
+                            size: 14,
+                          ),
+                          onTap: () {
+                            // Aquí podrías navegar a una pantalla de detalle del turno
+                          },
+                        ),
+                      );
+                    },
+                  ),
           ),
         ],
+      ),
+      // --- BOTÓN PARA AÑADIR NUEVO TURNO ---
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          // Lógica para abrir un formulario o diálogo para crear un nuevo turno.
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Aquí se abrirá el formulario para un nuevo turno.',
+              ),
+            ),
+          );
+        },
+        backgroundColor: Colors.blueGrey[800],
+        foregroundColor: Colors.white,
+        tooltip: 'Añadir Turno',
+        child: const Icon(Icons.add),
       ),
     );
   }
 }
+
+// --- PÁGINAS DE RELLENO (PLACEHOLDERS) PARA CADA SECCIÓN ---
+// Aquí es donde desarrollarás el contenido específico de cada parte del dashboard.
 
 class BarberosPage extends StatelessWidget {
   const BarberosPage({super.key});

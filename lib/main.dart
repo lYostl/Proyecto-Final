@@ -8,6 +8,8 @@ import 'auth/auth_page.dart';
 import 'firebase_options.dart';
 import 'package:firebase_core/firebase_core.dart';
 
+import 'package:flutter_localizations/flutter_localizations.dart';
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
@@ -31,10 +33,18 @@ class MyApp extends StatelessWidget {
           brightness: Brightness.dark,
         ),
       ),
-      
-      // CAMBIO CLAVE:
+
+      // Localización al español
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [
+        Locale('es', ''), // Español
+      ],
+
       // En lugar de `initialRoute`, usamos `home` para que el AuthWrapper decida.
-      // La LandingPage ahora se trata como una ruta normal.
       home: const LandingPage(), // Siempre empezamos en la Landing
 
       // Mantenemos las rutas para la navegación manual
