@@ -35,6 +35,9 @@ dependencies:
   firebase_core: ^3.4.0
   firebase_auth: ^5.2.0
   table_calendar: ^3.1.0 # calendario
+  intl: ^0.20.2
+
+
 
 
 

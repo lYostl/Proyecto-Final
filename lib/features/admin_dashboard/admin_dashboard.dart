@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
 // ¡Importante! Debes agregar 'table_calendar' a tu pubspec.yaml para que esto funcione.
 import 'package:table_calendar/table_calendar.dart';
+// ¡Importante! Debes agregar 'intl' a tu pubspec.yaml para formatear números y fechas.
+import 'package:intl/intl.dart';
 
 // --- WIDGET PRINCIPAL DEL DASHBOARD (AHORA CON ESTADO) ---
 // Convertimos el widget a StatefulWidget para poder manejar el estado de la
@@ -455,33 +457,215 @@ class _BarberosPageState extends State<BarberosPage> {
   }
 }
 
-// --- PÁGINAS DE RELLENO (PLACEHOLDERS) PARA LAS OTRAS SECCIONES ---
+// --- MODELOS DE DATOS PARA VENTAS ---
+class Venta {
+  final String servicio;
+  final String cliente;
+  final double monto;
+  final DateTime fecha;
 
-class VentasPage extends StatelessWidget {
+  Venta({
+    required this.servicio,
+    required this.cliente,
+    required this.monto,
+    required this.fecha,
+  });
+}
+
+// --- PÁGINA DE VENTAS Y SERVICIOS (SECCIÓN ACTUALIZADA) ---
+
+class VentasPage extends StatefulWidget {
   const VentasPage({super.key});
 
   @override
+  State<VentasPage> createState() => _VentasPageState();
+}
+
+class _VentasPageState extends State<VentasPage> {
+  // Datos de ejemplo. En una app real, esto vendría de una base de datos.
+  final List<Venta> _ventas = [
+    Venta(
+      servicio: 'Corte Clásico',
+      cliente: 'Juan Perez',
+      monto: 15000,
+      fecha: DateTime(2025, 10, 15, 10, 5),
+    ),
+    Venta(
+      servicio: 'Afeitado de Barba',
+      cliente: 'Carlos Gomez',
+      monto: 8000,
+      fecha: DateTime(2025, 10, 15, 11, 30),
+    ),
+    Venta(
+      servicio: 'Corte y Barba',
+      cliente: 'Luis Rodriguez',
+      monto: 22000,
+      fecha: DateTime(2025, 10, 16, 9, 0),
+    ),
+    Venta(
+      servicio: 'Diseño Especial',
+      cliente: 'Andres Soto',
+      monto: 18000,
+      fecha: DateTime(2025, 10, 17, 16, 20),
+    ),
+    Venta(
+      servicio: 'Corte Clásico',
+      cliente: 'Felipe Vera',
+      monto: 15000,
+      fecha: DateTime(2025, 10, 18, 12, 0),
+    ),
+  ];
+
+  @override
   Widget build(BuildContext context) {
-    return const Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+    // Cálculos para las tarjetas de resumen
+    final double ventasTotales = _ventas.fold(
+      0,
+      (sum, item) => sum + item.monto,
+    );
+    final int serviciosRealizados = _ventas.length;
+    final double ticketPromedio = serviciosRealizados > 0
+        ? ventasTotales / serviciosRealizados
+        : 0;
+
+    // Formateadores de números y fechas
+    final currencyFormatter = NumberFormat.currency(
+      locale: 'es_CL',
+      symbol: '\$',
+      decimalDigits: 0,
+    );
+    final dateFormatter = DateFormat('dd/MM/yyyy, HH:mm', 'es_ES');
+
+    return Scaffold(
+      body: Column(
         children: [
-          Icon(Icons.bar_chart, size: 80, color: Colors.grey),
-          SizedBox(height: 20),
-          Text(
-            'Reporte de Ventas y Servicios',
-            style: TextStyle(fontSize: 22, color: Colors.grey),
+          // --- TARJETAS DE RESUMEN ---
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: GridView.count(
+              crossAxisCount: 3,
+              shrinkWrap: true,
+              crossAxisSpacing: 8,
+              mainAxisSpacing: 8,
+              childAspectRatio: 1.5,
+              physics: const NeverScrollableScrollPhysics(),
+              children: [
+                _buildSummaryCard(
+                  title: 'Ventas Totales',
+                  value: currencyFormatter.format(ventasTotales),
+                  icon: Icons.monetization_on,
+                  color: Colors.green,
+                ),
+                _buildSummaryCard(
+                  title: 'Servicios',
+                  value: serviciosRealizados.toString(),
+                  icon: Icons.cut,
+                  color: Colors.blue,
+                ),
+                _buildSummaryCard(
+                  title: 'Ticket Promedio',
+                  value: currencyFormatter.format(ticketPromedio),
+                  icon: Icons.receipt_long,
+                  color: Colors.orange,
+                ),
+              ],
+            ),
           ),
-          Text(
-            'Aquí se mostrarán los reportes y estadísticas.',
-            style: TextStyle(color: Colors.grey),
+
+          // --- HISTORIAL DE VENTAS ---
+          Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 16.0,
+              vertical: 8.0,
+            ),
+            child: Text(
+              'Ventas Recientes',
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+            ),
+          ),
+          Expanded(
+            child: ListView.builder(
+              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+              itemCount: _ventas.length,
+              itemBuilder: (context, index) {
+                final venta = _ventas[index];
+                return Card(
+                  margin: const EdgeInsets.symmetric(vertical: 4.0),
+                  child: ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: Colors.blueGrey.shade100,
+                      child: const Icon(Icons.person, color: Colors.blueGrey),
+                    ),
+                    title: Text('${venta.servicio} - ${venta.cliente}'),
+                    subtitle: Text(dateFormatter.format(venta.fecha)),
+                    trailing: Text(
+                      currencyFormatter.format(venta.monto),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.green,
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
           ),
         ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          // Lógica para registrar una nueva venta
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Aquí se abriría el formulario para registrar una nueva venta.',
+              ),
+            ),
+          );
+        },
+        backgroundColor: Colors.blueGrey[800],
+        foregroundColor: Colors.white,
+        tooltip: 'Registrar Venta',
+        child: const Icon(Icons.add_shopping_cart),
+      ),
+    );
+  }
+
+  // Widget auxiliar para crear las tarjetas de resumen
+  Widget _buildSummaryCard({
+    required String title,
+    required String value,
+    required IconData icon,
+    required Color color,
+  }) {
+    return Card(
+      elevation: 4,
+      child: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, color: color, size: 24),
+            const SizedBox(height: 8),
+            Text(
+              title,
+              style: const TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+            Text(
+              value,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
+// --- PÁGINA DE CONFIGURACIÓN (PLACEHOLDER) ---
 class ConfiguracionPage extends StatelessWidget {
   const ConfiguracionPage({super.key});
 
