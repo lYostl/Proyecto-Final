@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
+import 'package:fl_chart/fl_chart.dart'; // Paquete de gráficos
 import '../../services/auth_service.dart';
 
-// --- Modelo para las Citas (sin cambios) ---
+// --- Modelo para las Citas ---
 class Cita {
   final String id;
   final String nombreCliente;
@@ -29,7 +30,7 @@ class Cita {
   }
 }
 
-// --- NUEVO: Modelo para los Barberos ---
+// --- Modelo para los Barberos ---
 class Barbero {
   final String? id;
   final String nombre;
@@ -58,6 +59,42 @@ class Barbero {
   }
 }
 
+// --- Modelo para las Ventas ---
+class Venta {
+  final String servicio;
+  final String cliente;
+  final double monto;
+  final DateTime fecha;
+
+  Venta({
+    required this.servicio,
+    required this.cliente,
+    required this.monto,
+    required this.fecha,
+  });
+
+  factory Venta.fromFirestore(DocumentSnapshot doc) {
+    Map data = doc.data() as Map<String, dynamic>;
+    return Venta(
+      servicio: data['servicio'] ?? 'N/A',
+      cliente: data['cliente'] ?? 'N/A',
+      monto: (data['monto'] ?? 0.0).toDouble(),
+      fecha: (data['fecha'] as Timestamp).toDate(),
+    );
+  }
+  Map<String, dynamic> toMap() {
+    return {
+      'servicio': servicio,
+      'cliente': cliente,
+      'monto': monto,
+      'fecha': Timestamp.fromDate(fecha),
+    };
+  }
+}
+
+// =========================================================================
+// === ESTRUCTURA PRINCIPAL DEL DASHBOARD (EL EDIFICIO) ===
+// =========================================================================
 class AdminDashboardPage extends StatefulWidget {
   const AdminDashboardPage({super.key});
 
@@ -72,14 +109,12 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
   final List<String> _pageTitles = [
     'Calendario de Clientes',
     'Gestión de Personal',
-    'Ventas y Servicios',
+    'Dashboard',
     'Configuración',
   ];
 
   void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
+    setState(() => _selectedIndex = index);
     _pageController.jumpToPage(index);
     if (context.mounted) Navigator.of(context).pop();
   }
@@ -146,12 +181,8 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
               ),
             ),
             _buildDrawerItem(Icons.calendar_month, 'Calendario de Clientes', 0),
-            _buildDrawerItem(
-              Icons.content_cut,
-              'Gestión de Personal',
-              1,
-            ), // Nombre actualizado
-            _buildDrawerItem(Icons.attach_money, 'Ventas / servicios', 2),
+            _buildDrawerItem(Icons.content_cut, 'Gestión de Personal', 1),
+            _buildDrawerItem(Icons.dashboard, 'Dashboard', 2),
             const Divider(),
             _buildDrawerItem(Icons.settings, 'Configuración', 3),
           ],
@@ -159,15 +190,11 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
       ),
       body: PageView(
         controller: _pageController,
-        onPageChanged: (index) {
-          setState(() {
-            _selectedIndex = index;
-          });
-        },
+        onPageChanged: (index) => setState(() => _selectedIndex = index),
         children: const [
           AgendaPage(),
           BarberosPage(),
-          VentasPage(),
+          VentasDashboardPage(),
           ConfiguracionPage(),
         ],
       ),
@@ -198,7 +225,9 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
   }
 }
 
-// --- PÁGINA DE AGENDA (sin cambios) ---
+// =========================================================================
+// === PISO 1: PÁGINA DE AGENDA (CALENDARIO) ===
+// =========================================================================
 class AgendaPage extends StatefulWidget {
   const AgendaPage({super.key});
   @override
@@ -332,7 +361,9 @@ class _AgendaPageState extends State<AgendaPage> {
   }
 }
 
-// --- PÁGINA DE GESTIÓN DE BARBEROS (COMPLETAMENTE NUEVA) ---
+// =========================================================================
+// === PISO 2: PÁGINA DE GESTIÓN DE BARBEROS (CRUD COMPLETO) ===
+// =========================================================================
 class BarberosPage extends StatefulWidget {
   const BarberosPage({super.key});
 
@@ -344,7 +375,6 @@ class _BarberosPageState extends State<BarberosPage> {
   final CollectionReference _barberosCollection = FirebaseFirestore.instance
       .collection('barberos');
 
-  // Function to show the add/edit dialog
   void _showBarberoDialog({Barbero? barbero}) {
     final _nombreController = TextEditingController(text: barbero?.nombre);
     final _especialidadController = TextEditingController(
@@ -496,8 +526,7 @@ class _BarberosPageState extends State<BarberosPage> {
                   leading: CircleAvatar(
                     radius: 30,
                     backgroundImage: NetworkImage(barbero.fotoUrl),
-                    onBackgroundImageError:
-                        (exception, stackTrace) {}, // Handle image load error
+                    onBackgroundImageError: (exception, stackTrace) {},
                   ),
                   title: Text(
                     barbero.nombre,
@@ -532,21 +561,413 @@ class _BarberosPageState extends State<BarberosPage> {
   }
 }
 
-// --- PÁGINAS DE VENTAS Y CONFIGURACIÓN (sin cambios) ---
-class VentasPage extends StatelessWidget {
-  const VentasPage({super.key}); /* ... */
+// =========================================================================
+// === PISO 3: PÁGINA DE DASHBOARD DE VENTAS (GRÁFICOS) ===
+// =========================================================================
+class VentasDashboardPage extends StatefulWidget {
+  const VentasDashboardPage({super.key});
+
+  @override
+  State<VentasDashboardPage> createState() => _VentasDashboardPageState();
+}
+
+class _VentasDashboardPageState extends State<VentasDashboardPage> {
+  int touchedIndex = -1;
+
+  // --- NUEVA FUNCIÓN PARA AÑADIR VENTAS ---
+  void _showVentaDialog() {
+    final _servicioController = TextEditingController();
+    final _clienteController = TextEditingController();
+    final _montoController = TextEditingController();
+    final _formKey = GlobalKey<FormState>();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) {
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+            top: 20,
+            left: 20,
+            right: 20,
+          ),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  'Registrar Nueva Venta',
+                  style: Theme.of(context).textTheme.headlineSmall,
+                ),
+                const SizedBox(height: 20),
+                TextFormField(
+                  controller: _servicioController,
+                  decoration: const InputDecoration(
+                    labelText: 'Nombre del Servicio',
+                  ),
+                  validator: (v) =>
+                      (v == null || v.isEmpty) ? 'Campo requerido' : null,
+                ),
+                const SizedBox(height: 10),
+                TextFormField(
+                  controller: _clienteController,
+                  decoration: const InputDecoration(
+                    labelText: 'Nombre del Cliente',
+                  ),
+                  validator: (v) =>
+                      (v == null || v.isEmpty) ? 'Campo requerido' : null,
+                ),
+                const SizedBox(height: 10),
+                TextFormField(
+                  controller: _montoController,
+                  decoration: const InputDecoration(
+                    labelText: 'Monto',
+                    prefixText: '\$ ',
+                  ),
+                  keyboardType: TextInputType.number,
+                  validator: (v) {
+                    if (v == null || v.isEmpty) return 'Campo requerido';
+                    if (double.tryParse(v) == null)
+                      return 'Ingrese un número válido';
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 20),
+                ElevatedButton(
+                  onPressed: () async {
+                    if (_formKey.currentState!.validate()) {
+                      final nuevaVenta = Venta(
+                        servicio: _servicioController.text,
+                        cliente: _clienteController.text,
+                        monto: double.parse(_montoController.text),
+                        fecha: DateTime.now(),
+                      );
+                      await FirebaseFirestore.instance
+                          .collection('ventas')
+                          .add(nuevaVenta.toMap());
+                      if (mounted) Navigator.of(context).pop();
+                    }
+                  },
+                  child: const Text('Guardar Venta'),
+                ),
+                const SizedBox(height: 20),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    // El código de esta página no cambia
-    return const Center(child: Text('Sección de Ventas'));
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance.collection('ventas').snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError) {
+          return const Center(child: Text('Error al cargar las ventas.'));
+        }
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return Scaffold(
+            // Devuelve un Scaffold para que el FAB sea visible
+            body: const Center(child: Text('Aún no hay ventas registradas.')),
+            floatingActionButton: FloatingActionButton(
+              onPressed: _showVentaDialog,
+              child: const Icon(Icons.add),
+              tooltip: 'Añadir Venta',
+            ),
+          );
+        }
+
+        final ventas = snapshot.data!.docs
+            .map((doc) => Venta.fromFirestore(doc))
+            .toList();
+        final double totalVentas = ventas.fold(
+          0,
+          (sum, item) => sum + item.monto,
+        );
+        final int totalServicios = ventas.length;
+        final double ticketPromedio = totalServicios > 0
+            ? totalVentas / totalServicios
+            : 0;
+        final Map<String, double> ventasPorServicio = {};
+        for (var venta in ventas) {
+          ventasPorServicio.update(
+            venta.servicio,
+            (value) => value + venta.monto,
+            ifAbsent: () => venta.monto,
+          );
+        }
+        final List<Color> pieColors = [
+          Colors.blue,
+          Colors.green,
+          Colors.orange,
+          Colors.red,
+          Colors.purple,
+          Colors.yellow,
+        ];
+
+        return Scaffold(
+          body: SingleChildScrollView(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: _SummaryCard(
+                        title: 'Ventas Totales',
+                        value: NumberFormat.simpleCurrency(
+                          locale: 'es_CL',
+                          decimalDigits: 0,
+                        ).format(totalVentas),
+                        icon: Icons.monetization_on,
+                        color: Colors.green,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: _SummaryCard(
+                        title: 'Servicios',
+                        value: totalServicios.toString(),
+                        icon: Icons.content_cut,
+                        color: Colors.blue,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: _SummaryCard(
+                    title: 'Ticket Promedio',
+                    value: NumberFormat.simpleCurrency(
+                      locale: 'es_CL',
+                      decimalDigits: 0,
+                    ).format(ticketPromedio),
+                    icon: Icons.receipt_long,
+                    color: Colors.orange,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Text(
+                  'Ventas por Servicio',
+                  style: Theme.of(context).textTheme.headlineSmall,
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  height: 200,
+                  child: PieChart(
+                    PieChartData(
+                      pieTouchData: PieTouchData(
+                        touchCallback: (FlTouchEvent event, pieTouchResponse) {
+                          setState(() {
+                            if (!event.isInterestedForInteractions ||
+                                pieTouchResponse == null ||
+                                pieTouchResponse.touchedSection == null) {
+                              touchedIndex = -1;
+                              return;
+                            }
+                            touchedIndex = pieTouchResponse
+                                .touchedSection!
+                                .touchedSectionIndex;
+                          });
+                        },
+                      ),
+                      borderData: FlBorderData(show: false),
+                      sectionsSpace: 2,
+                      centerSpaceRadius: 40,
+                      sections: List.generate(ventasPorServicio.length, (i) {
+                        final isTouched = i == touchedIndex;
+                        final entry = ventasPorServicio.entries.elementAt(i);
+                        final percentage = totalVentas > 0
+                            ? (entry.value / totalVentas) * 100
+                            : 0;
+                        return PieChartSectionData(
+                          color: pieColors[i % pieColors.length],
+                          value: entry.value,
+                          title: '${percentage.toStringAsFixed(1)}%',
+                          radius: isTouched ? 60.0 : 50.0,
+                          titleStyle: TextStyle(
+                            fontSize: isTouched ? 16.0 : 14.0,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        );
+                      }),
+                    ),
+                  ),
+                ),
+                Wrap(
+                  spacing: 8.0,
+                  children: List.generate(ventasPorServicio.length, (i) {
+                    return Chip(
+                      avatar: CircleAvatar(
+                        backgroundColor: pieColors[i % pieColors.length],
+                      ),
+                      label: Text(ventasPorServicio.keys.elementAt(i)),
+                    );
+                  }),
+                ),
+                const SizedBox(height: 24),
+                Text(
+                  'Historial de Ventas',
+                  style: Theme.of(context).textTheme.headlineSmall,
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: DataTable(
+                    columns: const [
+                      DataColumn(label: Text('Fecha')),
+                      DataColumn(label: Text('Servicio')),
+                      DataColumn(label: Text('Monto')),
+                    ],
+                    rows: ventas
+                        .map(
+                          (venta) => DataRow(
+                            cells: [
+                              DataCell(
+                                Text(
+                                  DateFormat('dd/MM/yy').format(venta.fecha),
+                                ),
+                              ),
+                              DataCell(Text(venta.servicio)),
+                              DataCell(
+                                Text(
+                                  NumberFormat.simpleCurrency(
+                                    locale: 'es_CL',
+                                    decimalDigits: 0,
+                                  ).format(venta.monto),
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                        .toList(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // --- BOTÓN PARA AÑADIR VENTA ---
+          floatingActionButton: FloatingActionButton(
+            onPressed: _showVentaDialog,
+            child: const Icon(Icons.add),
+            tooltip: 'Añadir Venta',
+          ),
+        );
+      },
+    );
   }
 }
 
-class ConfiguracionPage extends StatelessWidget {
-  const ConfiguracionPage({super.key}); /* ... */
+// Widget auxiliar para las tarjetas de resumen
+class _SummaryCard extends StatelessWidget {
+  final String title, value;
+  final IconData icon;
+  final Color color;
+  const _SummaryCard({
+    required this.title,
+    required this.value,
+    required this.icon,
+    required this.color,
+  });
+
   @override
   Widget build(BuildContext context) {
-    // El código de esta página no cambia
-    return const Center(child: Text('Sección de Configuración'));
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, size: 32, color: color),
+            const SizedBox(height: 8),
+            Text(title, style: const TextStyle(color: Colors.white70)),
+            const SizedBox(height: 4),
+            Text(
+              value,
+              style: Theme.of(
+                context,
+              ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+      ),
+    );
   }
+}
+
+// =========================================================================
+// === PISO 4: PÁGINA DE CONFIGURACIÓN ===
+// =========================================================================
+class ConfiguracionPage extends StatefulWidget {
+  const ConfiguracionPage({super.key});
+  @override
+  _ConfiguracionPageState createState() => _ConfiguracionPageState();
+}
+
+class _ConfiguracionPageState extends State<ConfiguracionPage> {
+  bool _notificacionesPush = true;
+  bool _modoOscuro = true;
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.all(16.0),
+      children: [
+        _buildSectionTitle('Cuenta'),
+        _buildConfigOption('Editar Perfil', Icons.person, () {}),
+        _buildConfigOption('Cambiar Contraseña', Icons.lock, () {}),
+        const Divider(height: 40),
+        _buildSectionTitle('Aplicación'),
+        SwitchListTile(
+          title: const Text('Notificaciones Push'),
+          secondary: const Icon(Icons.notifications),
+          value: _notificacionesPush,
+          onChanged: (bool value) =>
+              setState(() => _notificacionesPush = value),
+        ),
+        SwitchListTile(
+          title: const Text('Modo Oscuro'),
+          secondary: const Icon(Icons.dark_mode),
+          value: _modoOscuro,
+          onChanged: (bool value) => setState(() => _modoOscuro = value),
+        ),
+        const Divider(height: 40),
+        _buildSectionTitle('Información'),
+        _buildConfigOption('Términos de Servicio', Icons.description, () {}),
+        _buildConfigOption('Política de Privacidad', Icons.privacy_tip, () {}),
+      ],
+    );
+  }
+
+  Padding _buildSectionTitle(String title) => Padding(
+    padding: const EdgeInsets.only(bottom: 8.0),
+    child: Text(
+      title,
+      style: TextStyle(
+        fontSize: 18,
+        fontWeight: FontWeight.bold,
+        color: Theme.of(context).colorScheme.primary,
+      ),
+    ),
+  );
+  ListTile _buildConfigOption(
+    String title,
+    IconData icon,
+    VoidCallback onTap,
+  ) => ListTile(
+    leading: Icon(icon),
+    title: Text(title),
+    trailing: const Icon(Icons.chevron_right),
+    onTap: onTap,
+  );
 }

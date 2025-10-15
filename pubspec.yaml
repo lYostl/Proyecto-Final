@@ -37,6 +37,8 @@ dependencies:
   table_calendar: ^3.1.0 # calendario
   intl: ^0.20.2
   cloud_firestore: ^4.15.8 
+  fl_chart: ^0.68.0
+
 
 
 
