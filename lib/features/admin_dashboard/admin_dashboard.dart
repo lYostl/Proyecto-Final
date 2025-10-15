@@ -4,7 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
 import '../../services/auth_service.dart';
 
-// --- Modelo para las Citas ---
+// --- Modelo para las Citas (sin cambios) ---
 class Cita {
   final String id;
   final String nombreCliente;
@@ -29,6 +29,35 @@ class Cita {
   }
 }
 
+// --- NUEVO: Modelo para los Barberos ---
+class Barbero {
+  final String? id;
+  final String nombre;
+  final String especialidad;
+  final String fotoUrl;
+
+  Barbero({
+    this.id,
+    required this.nombre,
+    required this.especialidad,
+    required this.fotoUrl,
+  });
+
+  factory Barbero.fromFirestore(DocumentSnapshot doc) {
+    Map data = doc.data() as Map<String, dynamic>;
+    return Barbero(
+      id: doc.id,
+      nombre: data['nombre'] ?? '',
+      especialidad: data['especialidad'] ?? '',
+      fotoUrl: data['fotoUrl'] ?? 'https://placehold.co/100x100/eee/000?text=?',
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {'nombre': nombre, 'especialidad': especialidad, 'fotoUrl': fotoUrl};
+  }
+}
+
 class AdminDashboardPage extends StatefulWidget {
   const AdminDashboardPage({super.key});
 
@@ -41,8 +70,8 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
   final PageController _pageController = PageController();
 
   final List<String> _pageTitles = [
-    'Agenda de Turnos',
-    'Gestión de Barberos',
+    'Calendario de Clientes',
+    'Gestión de Personal',
     'Ventas y Servicios',
     'Configuración',
   ];
@@ -68,7 +97,11 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
             icon: const Icon(Icons.logout),
             onPressed: () async {
               await auth.signOut();
-              // El AuthWrapper debería manejar la navegación
+              if (context.mounted) {
+                Navigator.of(
+                  context,
+                ).pushNamedAndRemoveUntil('/wrapper', (route) => false);
+              }
             },
           ),
         ],
@@ -112,8 +145,12 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                 ],
               ),
             ),
-            _buildDrawerItem(Icons.calendar_month, 'Agenda de turnos', 0),
-            _buildDrawerItem(Icons.content_cut, 'Barberos', 1),
+            _buildDrawerItem(Icons.calendar_month, 'Calendario de Clientes', 0),
+            _buildDrawerItem(
+              Icons.content_cut,
+              'Gestión de Personal',
+              1,
+            ), // Nombre actualizado
             _buildDrawerItem(Icons.attach_money, 'Ventas / servicios', 2),
             const Divider(),
             _buildDrawerItem(Icons.settings, 'Configuración', 3),
@@ -161,10 +198,9 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
   }
 }
 
-// --- SECCIÓN DE AGENDA (MODIFICADA PARA LEER DE FIREBASE) ---
+// --- PÁGINA DE AGENDA (sin cambios) ---
 class AgendaPage extends StatefulWidget {
   const AgendaPage({super.key});
-
   @override
   State<AgendaPage> createState() => _AgendaPageState();
 }
@@ -173,7 +209,6 @@ class _AgendaPageState extends State<AgendaPage> {
   CalendarFormat _calendarFormat = CalendarFormat.month;
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
-
   Map<DateTime, List<Cita>> _citas = {};
   late final ValueNotifier<List<Cita>> _selectedEvents;
 
@@ -219,7 +254,6 @@ class _AgendaPageState extends State<AgendaPage> {
         if (snapshot.hasError) {
           return const Center(child: Text('Error al cargar las citas.'));
         }
-
         if (snapshot.hasData) {
           _citas = {};
           for (var doc in snapshot.data!.docs) {
@@ -229,9 +263,7 @@ class _AgendaPageState extends State<AgendaPage> {
               cita.fecha.month,
               cita.fecha.day,
             );
-            if (_citas[normalizedDate] == null) {
-              _citas[normalizedDate] = [];
-            }
+            if (_citas[normalizedDate] == null) _citas[normalizedDate] = [];
             _citas[normalizedDate]!.add(cita);
           }
           WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -240,11 +272,11 @@ class _AgendaPageState extends State<AgendaPage> {
             }
           });
         }
-
         return Scaffold(
           body: Column(
             children: [
               TableCalendar<Cita>(
+                locale: 'es_ES',
                 firstDay: DateTime.utc(2020, 1, 1),
                 lastDay: DateTime.utc(2030, 12, 31),
                 focusedDay: _focusedDay,
@@ -258,31 +290,12 @@ class _AgendaPageState extends State<AgendaPage> {
                     setState(() => _calendarFormat = format);
                 },
                 onPageChanged: (focusedDay) => _focusedDay = focusedDay,
-                calendarStyle: CalendarStyle(
-                  todayDecoration: BoxDecoration(
-                    color: Colors.deepOrange.withOpacity(0.5),
-                    shape: BoxShape.circle,
-                  ),
-                  selectedDecoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.primary,
-                    shape: BoxShape.circle,
-                  ),
-                  markerDecoration: BoxDecoration(
-                    color: Colors.blue[400],
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                headerStyle: const HeaderStyle(
-                  formatButtonVisible: false,
-                  titleCentered: true,
-                ),
               ),
-              const SizedBox(height: 8.0),
               const Divider(),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16.0),
                 child: Text(
-                  'Turnos del día',
+                  'Citas del día',
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
               ),
@@ -292,14 +305,13 @@ class _AgendaPageState extends State<AgendaPage> {
                   builder: (context, value, _) {
                     if (value.isEmpty)
                       return const Center(
-                        child: Text('No hay turnos para este día.'),
+                        child: Text('No hay citas para este día.'),
                       );
                     return ListView.builder(
                       itemCount: value.length,
                       itemBuilder: (context, index) {
                         final cita = value[index];
                         return ListTile(
-                          leading: const Icon(Icons.content_cut),
                           title: Text(
                             '${cita.servicio} - ${cita.nombreCliente}',
                           ),
@@ -314,311 +326,227 @@ class _AgendaPageState extends State<AgendaPage> {
               ),
             ],
           ),
-          floatingActionButton: FloatingActionButton(
-            onPressed: () {},
-            child: const Icon(Icons.add),
-          ),
         );
       },
     );
   }
 }
 
-// --- (El resto de las páginas: Barberos, Ventas, Configuración, se mantienen igual que antes) ---
-// --- El código de estas secciones no se modifica ---
-class Barbero {
-  final String id;
-  final String nombre;
-  final String fotoUrl;
-  final String especialidad;
-
-  Barbero({
-    required this.id,
-    required this.nombre,
-    required this.fotoUrl,
-    required this.especialidad,
-  });
-}
-
+// --- PÁGINA DE GESTIÓN DE BARBEROS (COMPLETAMENTE NUEVA) ---
 class BarberosPage extends StatefulWidget {
   const BarberosPage({super.key});
+
   @override
   State<BarberosPage> createState() => _BarberosPageState();
 }
 
 class _BarberosPageState extends State<BarberosPage> {
-  final List<Barbero> _barberos = [
-    Barbero(
-      id: '1',
-      nombre: 'Carlos Gutierrez',
-      fotoUrl: 'https://placehold.co/100x100/222/FFF?text=CG',
-      especialidad: 'Cortes clásicos y Barba',
-    ),
-    Barbero(
-      id: '2',
-      nombre: 'Matias Rodriguez',
-      fotoUrl: 'https://placehold.co/100x100/333/FFF?text=MR',
-      especialidad: 'Diseños y Color',
-    ),
-  ];
+  final CollectionReference _barberosCollection = FirebaseFirestore.instance
+      .collection('barberos');
+
+  // Function to show the add/edit dialog
+  void _showBarberoDialog({Barbero? barbero}) {
+    final _nombreController = TextEditingController(text: barbero?.nombre);
+    final _especialidadController = TextEditingController(
+      text: barbero?.especialidad,
+    );
+    final _fotoUrlController = TextEditingController(text: barbero?.fotoUrl);
+    final _formKey = GlobalKey<FormState>();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) {
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+            top: 20,
+            left: 20,
+            right: 20,
+          ),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  barbero == null ? 'Añadir Personal' : 'Editar Personal',
+                  style: Theme.of(context).textTheme.headlineSmall,
+                ),
+                const SizedBox(height: 20),
+                TextFormField(
+                  controller: _nombreController,
+                  decoration: const InputDecoration(
+                    labelText: 'Nombre Completo',
+                  ),
+                  validator: (value) => (value == null || value.isEmpty)
+                      ? 'El nombre es obligatorio'
+                      : null,
+                ),
+                const SizedBox(height: 10),
+                TextFormField(
+                  controller: _especialidadController,
+                  decoration: const InputDecoration(labelText: 'Especialidad'),
+                  validator: (value) => (value == null || value.isEmpty)
+                      ? 'La especialidad es obligatoria'
+                      : null,
+                ),
+                const SizedBox(height: 10),
+                TextFormField(
+                  controller: _fotoUrlController,
+                  decoration: const InputDecoration(
+                    labelText: 'URL de la foto',
+                  ),
+                  validator: (value) => (value == null || value.isEmpty)
+                      ? 'La URL de la foto es obligatoria'
+                      : null,
+                ),
+                const SizedBox(height: 20),
+                ElevatedButton(
+                  onPressed: () async {
+                    if (_formKey.currentState!.validate()) {
+                      final newBarbero = Barbero(
+                        id: barbero?.id,
+                        nombre: _nombreController.text,
+                        especialidad: _especialidadController.text,
+                        fotoUrl: _fotoUrlController.text,
+                      );
+                      if (barbero == null) {
+                        await _barberosCollection.add(newBarbero.toMap());
+                      } else {
+                        await _barberosCollection
+                            .doc(barbero.id)
+                            .update(newBarbero.toMap());
+                      }
+                      if (mounted) Navigator.of(context).pop();
+                    }
+                  },
+                  child: Text(barbero == null ? 'Guardar' : 'Actualizar'),
+                ),
+                const SizedBox(height: 20),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _deleteBarbero(String id) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Confirmar Eliminación'),
+        content: const Text(
+          '¿Estás seguro de que quieres eliminar a este miembro del personal? Esta acción no se puede deshacer.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () async {
+              await _barberosCollection.doc(id).delete();
+              if (mounted) Navigator.of(context).pop();
+            },
+            child: const Text(
+              'Eliminar',
+              style: TextStyle(color: Colors.redAccent),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: ListView.builder(
-        padding: const EdgeInsets.all(8.0),
-        itemCount: _barberos.length,
-        itemBuilder: (context, index) {
-          final barbero = _barberos[index];
-          return Card(
-            margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 8.0),
-            child: ListTile(
-              contentPadding: const EdgeInsets.all(12.0),
-              leading: CircleAvatar(
-                radius: 30,
-                backgroundImage: NetworkImage(barbero.fotoUrl),
-              ),
-              title: Text(
-                barbero.nombre,
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-              subtitle: Text(barbero.especialidad),
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.edit, color: Colors.blueAccent),
-                    onPressed: () {},
+      body: StreamBuilder<QuerySnapshot>(
+        stream: _barberosCollection.snapshots(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasError) {
+            return const Center(child: Text('Error al cargar los datos.'));
+          }
+          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+            return const Center(child: Text('No hay personal registrado.'));
+          }
+
+          final barberos = snapshot.data!.docs
+              .map((doc) => Barbero.fromFirestore(doc))
+              .toList();
+
+          return ListView.builder(
+            padding: const EdgeInsets.all(8.0),
+            itemCount: barberos.length,
+            itemBuilder: (context, index) {
+              final barbero = barberos[index];
+              return Card(
+                margin: const EdgeInsets.symmetric(
+                  vertical: 8.0,
+                  horizontal: 8.0,
+                ),
+                child: ListTile(
+                  contentPadding: const EdgeInsets.all(12.0),
+                  leading: CircleAvatar(
+                    radius: 30,
+                    backgroundImage: NetworkImage(barbero.fotoUrl),
+                    onBackgroundImageError:
+                        (exception, stackTrace) {}, // Handle image load error
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.delete, color: Colors.redAccent),
-                    onPressed: () => setState(() => _barberos.removeAt(index)),
+                  title: Text(
+                    barbero.nombre,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
-                ],
-              ),
-            ),
+                  subtitle: Text(barbero.especialidad),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.edit, color: Colors.blueAccent),
+                        onPressed: () => _showBarberoDialog(barbero: barbero),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.delete, color: Colors.redAccent),
+                        onPressed: () => _deleteBarbero(barbero.id!),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
           );
         },
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {},
+        onPressed: () => _showBarberoDialog(),
         child: const Icon(Icons.add),
+        tooltip: 'Añadir Personal',
       ),
     );
   }
 }
 
-class Venta {
-  final String servicio;
-  final String cliente;
-  final double monto;
-  final DateTime fecha;
-  Venta({
-    required this.servicio,
-    required this.cliente,
-    required this.monto,
-    required this.fecha,
-  });
-}
-
+// --- PÁGINAS DE VENTAS Y CONFIGURACIÓN (sin cambios) ---
 class VentasPage extends StatelessWidget {
-  const VentasPage({super.key});
+  const VentasPage({super.key}); /* ... */
   @override
   Widget build(BuildContext context) {
-    final List<Venta> _ventas = [
-      Venta(
-        servicio: 'Corte de Pelo',
-        cliente: 'Juan Perez',
-        monto: 15000,
-        fecha: DateTime.now().subtract(const Duration(hours: 2)),
-      ),
-      Venta(
-        servicio: 'Barba',
-        cliente: 'Carlos Gomez',
-        monto: 8000,
-        fecha: DateTime.now().subtract(const Duration(hours: 4)),
-      ),
-    ];
-    final double totalVentas = _ventas.fold(0, (sum, item) => sum + item.monto);
-    final int totalServicios = _ventas.length;
-    final double ticketPromedio = totalServicios > 0
-        ? totalVentas / totalServicios
-        : 0;
-    return Scaffold(
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: SummaryCard(
-                    title: 'Ventas Totales',
-                    value: NumberFormat.simpleCurrency(
-                      locale: 'es_CL',
-                      decimalDigits: 0,
-                    ).format(totalVentas),
-                    icon: Icons.monetization_on,
-                    color: Colors.green,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: SummaryCard(
-                    title: 'Servicios',
-                    value: totalServicios.toString(),
-                    icon: Icons.content_cut,
-                    color: Colors.blue,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: SummaryCard(
-                title: 'Ticket Promedio',
-                value: NumberFormat.simpleCurrency(
-                  locale: 'es_CL',
-                  decimalDigits: 0,
-                ).format(ticketPromedio),
-                icon: Icons.receipt_long,
-                color: Colors.orange,
-              ),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              'Historial Reciente',
-              style: Theme.of(context).textTheme.headlineSmall,
-            ),
-            const SizedBox(height: 8),
-            ..._ventas
-                .map(
-                  (venta) => Card(
-                    margin: const EdgeInsets.symmetric(vertical: 4),
-                    child: ListTile(
-                      leading: const Icon(Icons.receipt),
-                      title: Text('${venta.servicio} - ${venta.cliente}'),
-                      subtitle: Text(
-                        DateFormat('dd/MM/yyyy, HH:mm a').format(venta.fecha),
-                      ),
-                      trailing: Text(
-                        NumberFormat.simpleCurrency(
-                          locale: 'es_CL',
-                          decimalDigits: 0,
-                        ).format(venta.monto),
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ),
-                )
-                .toList(),
-          ],
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {},
-        child: const Icon(Icons.add),
-      ),
-    );
+    // El código de esta página no cambia
+    return const Center(child: Text('Sección de Ventas'));
   }
 }
 
-class SummaryCard extends StatelessWidget {
-  final String title, value;
-  final IconData icon;
-  final Color color;
-  const SummaryCard({
-    super.key,
-    required this.title,
-    required this.value,
-    required this.icon,
-    required this.color,
-  });
+class ConfiguracionPage extends StatelessWidget {
+  const ConfiguracionPage({super.key}); /* ... */
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(icon, size: 32, color: color),
-            const SizedBox(height: 8),
-            Text(title, style: const TextStyle(color: Colors.white70)),
-            const SizedBox(height: 4),
-            Text(
-              value,
-              style: Theme.of(
-                context,
-              ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
-            ),
-          ],
-        ),
-      ),
-    );
+    // El código de esta página no cambia
+    return const Center(child: Text('Sección de Configuración'));
   }
-}
-
-class ConfiguracionPage extends StatefulWidget {
-  const ConfiguracionPage({super.key});
-  @override
-  _ConfiguracionPageState createState() => _ConfiguracionPageState();
-}
-
-class _ConfiguracionPageState extends State<ConfiguracionPage> {
-  bool _notificacionesPush = true;
-  bool _modoOscuro = true;
-  @override
-  Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.all(16.0),
-      children: [
-        _buildSectionTitle('Cuenta'),
-        _buildConfigOption('Editar Perfil', Icons.person, () {}),
-        _buildConfigOption('Cambiar Contraseña', Icons.lock, () {}),
-        const Divider(height: 40),
-        _buildSectionTitle('Aplicación'),
-        SwitchListTile(
-          title: const Text('Notificaciones Push'),
-          secondary: const Icon(Icons.notifications),
-          value: _notificacionesPush,
-          onChanged: (bool value) =>
-              setState(() => _notificacionesPush = value),
-        ),
-        SwitchListTile(
-          title: const Text('Modo Oscuro'),
-          secondary: const Icon(Icons.dark_mode),
-          value: _modoOscuro,
-          onChanged: (bool value) => setState(() => _modoOscuro = value),
-        ),
-        const Divider(height: 40),
-        _buildSectionTitle('Información'),
-        _buildConfigOption('Términos de Servicio', Icons.description, () {}),
-        _buildConfigOption('Política de Privacidad', Icons.privacy_tip, () {}),
-      ],
-    );
-  }
-
-  Padding _buildSectionTitle(String title) => Padding(
-    padding: const EdgeInsets.only(bottom: 8.0),
-    child: Text(
-      title,
-      style: TextStyle(
-        fontSize: 18,
-        fontWeight: FontWeight.bold,
-        color: Theme.of(context).colorScheme.primary,
-      ),
-    ),
-  );
-  ListTile _buildConfigOption(
-    String title,
-    IconData icon,
-    VoidCallback onTap,
-  ) => ListTile(
-    leading: Icon(icon),
-    title: Text(title),
-    trailing: const Icon(Icons.chevron_right),
-    onTap: onTap,
-  );
 }

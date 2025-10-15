@@ -35,7 +35,7 @@ class _LandingPageState extends State<LandingPage> {
 
   // Esta función es para el BARBERO que inicia sesión
   void _navigateToAdminLogin() {
-    Navigator.pushNamed(context, '/wrapper');
+    Navigator.pushNamed(context, '/auth');
   }
 
   // --- CAMBIO 2: Nueva función para el CLIENTE que quiere agendar ---
@@ -60,27 +60,22 @@ class _LandingPageState extends State<LandingPage> {
             onFaq: () => _scrollTo(_faqKey),
             onPrecios: () => _scrollTo(_priceKey),
             onAdapt: () => _scrollTo(_adaptKey),
-            onLogin: _navigateToAdminLogin, // Correcto: para el admin
+            onLogin: _navigateToAdminLogin,
             onCTA:
-                _navigateToBooking, // --- CAMBIO 3: El botón "Prueba gratis" ahora agenda ---
+                _navigateToAdminLogin, // << CAMBIO: Ahora va a Iniciar Sesión también
           ),
           Expanded(
             child: SingleChildScrollView(
               child: Column(
                 children: [
-                  // HERO con tabs + slider
                   _Section(
                     key: _homeKey,
                     padding: const EdgeInsets.symmetric(
                       vertical: 56,
                       horizontal: 24,
                     ),
-                    child: _HeroWithTabs(
-                      onCta: _navigateToBooking,
-                    ), // --- CAMBIO 4: Conectado a la reserva ---
+                    child: _HeroWithTabs(onCta: _navigateToBooking),
                   ),
-
-                  // Sección "Impulsa tus horarios" (cards que navegan)
                   _Section(
                     key: _servicesKey,
                     color: const Color(0xFF0F1324),
@@ -90,17 +85,11 @@ class _LandingPageState extends State<LandingPage> {
                     ),
                     child: _ImpulsaTusHorarios(
                       onCardTap: (route) {
-                        // --- CAMBIO 5: Todas las cards ahora llevan a la página de reserva ---
                         _navigateToBooking();
                       },
                     ),
                   ),
-
-                  // "Una competencia única..." + botón + mock de web/móvil
-                  _UniqueValueAndMock(
-                    onCta: _navigateToAdminLogin,
-                  ), // Lo dejamos para el admin
-                  // El resto de tu página no necesita cambios...
+                  _UniqueValueAndMock(onCta: _navigateToAdminLogin),
                   _Section(
                     key: _howKey,
                     color: const Color(0xFF0F1324),
@@ -150,13 +139,9 @@ class _LandingPageState extends State<LandingPage> {
                       vertical: 56,
                       horizontal: 24,
                     ),
-                    child: _PricingSimple(
-                      onChoose: _navigateToBooking,
-                    ), // CAMBIO: Elige plan te lleva a agendar
+                    child: _PricingSimple(onChoose: _navigateToBooking),
                   ),
-                  _FooterCTA(
-                    onCta: _navigateToBooking,
-                  ), // CAMBIO: El CTA del footer te lleva a agendar
+                  _FooterCTA(onCta: _navigateToBooking),
                 ],
               ),
             ),
@@ -169,9 +154,8 @@ class _LandingPageState extends State<LandingPage> {
 
 // ======================================================================
 // AQUÍ VA TODO EL RESTO DE TU CÓDIGO (_Navbar, _HeroWithTabs, etc.)
-// No necesitas cambiar nada en los demás widgets, solo pégalos debajo.
+// No necesitas cambiar nada en los demás widgets.
 // ======================================================================
-
 /* ============================================================
  * NAVBAR con menús hover básicos
  * ============================================================ */
@@ -308,7 +292,10 @@ class _Navbar extends StatelessWidget {
             _NavBtn('Rubros', onAdapt),
 
             const SizedBox(width: 8),
-            TextButton(onPressed: onLogin, child: const Text('Ir a mi cuenta')),
+            TextButton(
+              onPressed: onLogin,
+              child: const Text('Iniciar Sesión'),
+            ), // << CAMBIO DE TEXTO
             const SizedBox(width: 8),
             ElevatedButton(
               onPressed: onCTA,

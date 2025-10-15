@@ -3,10 +3,8 @@ import 'package:agendamientos/features/admin_dashboard/admin_dashboard.dart';
 import 'package:flutter/material.dart';
 import 'features/landing/landing_page.dart';
 import 'auth/auth_page.dart';
-
 import 'firebase_options.dart';
 import 'package:firebase_core/firebase_core.dart';
-
 import 'package:flutter_localizations/flutter_localizations.dart';
 
 Future<void> main() async {
@@ -30,8 +28,6 @@ class MyApp extends StatelessWidget {
           brightness: Brightness.dark,
         ),
       ),
-
-      // Localización al español
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
@@ -41,11 +37,16 @@ class MyApp extends StatelessWidget {
         Locale('es', ''), // Español
       ],
 
-      // Volvemos a la configuración anterior donde la LandingPage es el inicio.
-      home: const LandingPage(),
+      // --- CAMBIO CLAVE ---
+      // Ahora el AuthWrapper es el hogar. Él decidirá si mostrar
+      // la LandingPage o el AdminDashboard.
+      home: const AuthWrapper(),
 
-      // Mantenemos las rutas para la navegación manual
+      // Mantenemos las rutas para navegación interna si es necesario,
+      // pero la lógica principal la maneja el home.
       routes: {
+        // La LandingPage ahora se muestra a través del AuthWrapper
+        '/landing': (_) => const LandingPage(),
         '/auth': (_) => const AuthPage(),
         '/dashboard': (_) => const AdminDashboardPage(),
         '/wrapper': (_) => const AuthWrapper(),
