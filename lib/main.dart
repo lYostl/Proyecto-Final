@@ -1,18 +1,15 @@
-// lib/main.dart
 import 'package:agendamientos/auth/auth_wrapper.dart';
 import 'package:agendamientos/features/admin_dashboard/admin_dashboard.dart';
 import 'package:flutter/material.dart';
 import 'features/landing/landing_page.dart';
 import 'auth/auth_page.dart';
-
 import 'firebase_options.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   runApp(const MyApp());
 }
 
@@ -31,18 +28,28 @@ class MyApp extends StatelessWidget {
           brightness: Brightness.dark,
         ),
       ),
-      
-      // CAMBIO CLAVE:
-      // En lugar de `initialRoute`, usamos `home` para que el AuthWrapper decida.
-      // La LandingPage ahora se trata como una ruta normal.
-      home: const LandingPage(), // Siempre empezamos en la Landing
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [
+        Locale('es', ''), // Español
+      ],
 
-      // Mantenemos las rutas para la navegación manual
+      // --- CAMBIO CLAVE ---
+      // Ahora el AuthWrapper es el hogar. Él decidirá si mostrar
+      // la LandingPage o el AdminDashboard.
+      home: const AuthWrapper(),
+
+      // Mantenemos las rutas para navegación interna si es necesario,
+      // pero la lógica principal la maneja el home.
       routes: {
-        // No necesitamos '/', ya que 'home' lo maneja.
+        // La LandingPage ahora se muestra a través del AuthWrapper
+        '/landing': (_) => const LandingPage(),
         '/auth': (_) => const AuthPage(),
         '/dashboard': (_) => const AdminDashboardPage(),
-        '/wrapper': (_) => const AuthWrapper(), // Ruta para el guardián
+        '/wrapper': (_) => const AuthWrapper(),
       },
     );
   }
