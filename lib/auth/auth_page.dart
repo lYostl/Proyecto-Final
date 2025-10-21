@@ -73,18 +73,33 @@ class _AuthPageState extends State<AuthPage>
     return null;
   }
 
+  // =================================================================
+  // === FUNCIÓN _doLogin ACTUALIZADA CON NAVEGACIÓN ===
+  // =================================================================
   Future<void> _doLogin() async {
     if (!_loginFormKey.currentState!.validate()) return;
     setState(() => _loading = true);
+
     final err = await _auth.signIn(
       email: _loginEmailCtrl.text.trim(),
       password: _loginPassCtrl.text.trim(),
     );
-    if (mounted && err != null) {
+
+    if (!mounted) return;
+
+    if (err != null) {
+      // Error: Oculta el spinner y muestra el mensaje
       setState(() => _loading = false);
       _showSnack(err);
+    } else {
+      // Éxito: Cierra la página (el spinner desaparece con ella)
+      // AuthWrapper se encargará de mostrar el Dashboard.
+      Navigator.of(context).pop();
     }
   }
+  // =================================================================
+  // === FIN DE LA FUNCIÓN ACTUALIZADA ===
+  // =================================================================
 
   Future<void> _doRegister() async {
     if (!_regFormKey.currentState!.validate()) return;
@@ -124,8 +139,6 @@ class _AuthPageState extends State<AuthPage>
 
   @override
   Widget build(BuildContext context) {
-    // --- CAMBIO CLAVE: Envolvemos todo el Scaffold en un GestureDetector ---
-    // Esto nos permite cerrar el teclado al tocar fuera de un campo de texto.
     return GestureDetector(
       onTap: () => FocusScope.of(context).unfocus(),
       child: Scaffold(
@@ -137,7 +150,6 @@ class _AuthPageState extends State<AuthPage>
           backgroundColor: Colors.transparent,
           elevation: 0,
         ),
-        // --- CAMBIO CLAVE: Hacemos que toda la página pueda hacer scroll ---
         body: SingleChildScrollView(
           child: Center(
             child: Padding(
@@ -173,7 +185,6 @@ class _AuthPageState extends State<AuthPage>
                           ],
                         ),
                         const SizedBox(height: 16),
-                        // Quitamos la altura fija y dejamos que el contenido decida su tamaño
                         SizedBox(
                           height: 450,
                           child: TabBarView(
@@ -193,7 +204,6 @@ class _AuthPageState extends State<AuthPage>
     );
   }
 
-  // El formulario de Login no necesita scroll, así que se queda igual
   Widget _buildLoginForm() {
     return Form(
       key: _loginFormKey,
@@ -238,8 +248,6 @@ class _AuthPageState extends State<AuthPage>
     );
   }
 
-  // --- CAMBIO CLAVE: El formulario de Registro ahora tiene su propio Scroll ---
-  // por si el contenido sigue siendo muy alto en pantallas pequeñas.
   Widget _buildRegisterForm() {
     return Form(
       key: _regFormKey,
