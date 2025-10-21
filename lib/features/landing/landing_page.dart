@@ -1,9 +1,8 @@
 // lib/features/landing/landing_page.dart
-
 import 'dart:async';
 import 'package:flutter/material.dart';
-// --- CAMBIO 1: Importar la página de reserva ---
-import '../public_booking/booking_page.dart';
+// ✅ usa alias para evitar choques de nombres con alguna clase antigua
+import '../landing/public_booking/booking_page.dart' as booking;
 
 class LandingPage extends StatefulWidget {
   const LandingPage({super.key});
@@ -38,13 +37,12 @@ class _LandingPageState extends State<LandingPage> {
     Navigator.pushNamed(context, '/auth');
   }
 
-  // --- CAMBIO 2: Nueva función para el CLIENTE que quiere agendar ---
-  void _navigateToBooking() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const BookingPage()),
-    );
-  }
+void _navigateToBooking() {
+  Navigator.push(
+    context,
+    MaterialPageRoute(builder: (context) => const booking.BookingPage()),
+  );
+}
 
   @override
   Widget build(BuildContext context) {
@@ -76,19 +74,25 @@ class _LandingPageState extends State<LandingPage> {
                     ),
                     child: _HeroWithTabs(onCta: _navigateToBooking),
                   ),
-                  _Section(
-                    key: _servicesKey,
-                    color: const Color(0xFF0F1324),
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 56,
-                      horizontal: 24,
+                    _Section(
+                      key: _servicesKey,
+                      color: const Color(0xFF0F1324),
+                      padding: const EdgeInsets.symmetric(vertical: 56, horizontal: 24),
+                      child: _ImpulsaTusHorarios(
+                        onCardTap: (route) {
+                          if (route == 'agenda') {
+                            // SOLO esta tarjeta abre el flujo de reservas
+                            _navigateToBooking();
+                          } else if (route == 'reservas') {
+                            // Ejemplo: solo hacemos scroll a la sección de servicios
+                            _scrollTo(_servicesKey);
+                          } else {
+                            // Whatsapp notis / Marketing → mostramos funcionalidades
+                            _scrollTo(_featKey);
+                          }
+                        },
+                      ),
                     ),
-                    child: _ImpulsaTusHorarios(
-                      onCardTap: (route) {
-                        _navigateToBooking();
-                      },
-                    ),
-                  ),
                   _UniqueValueAndMock(onCta: _navigateToAdminLogin),
                   _Section(
                     key: _howKey,
