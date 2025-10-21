@@ -1,1 +1,38 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"agendamientoapp","appId":"1:1009744689147:android:0261801e602bad1d24fd5e","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"agendamientoapp","configurations":{"android":"1:1009744689147:android:0261801e602bad1d24fd5e","web":"1:1009744689147:web:f7a074accf1ac28a24fd5e"}}}}}}
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "agendamientoapp",
+          "appId": "1:1009744689147:android:0261801e602bad1d24fd5e",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "agendamientoapp",
+          "configurations": {
+            "android": "1:1009744689147:android:0261801e602bad1d24fd5e",
+            "web": "1:1009744689147:web:f7a074accf1ac28a24fd5e"
+          }
+        }
+      }
+    }
+  },
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default",
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "*.local"
+      ],
+      "predeploy": [
+        "npm --prefix \"$RESOURCE_DIR\" run lint"
+      ]
+    }
+  ]
+}

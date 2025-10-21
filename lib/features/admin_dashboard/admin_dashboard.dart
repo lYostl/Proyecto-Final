@@ -5,6 +5,10 @@ import 'package:table_calendar/table_calendar.dart';
 import 'package:fl_chart/fl_chart.dart'; // Paquete de gráficos
 import '../../services/auth_service.dart';
 
+/// ===============================
+/// MODELOS
+/// ===============================
+
 // --- Modelo para las Citas ---
 class Cita {
   final String id;
@@ -30,7 +34,7 @@ class Cita {
   }
 }
 
-// --- Modelo para los Barberos ---
+// --- Modelo para los Barberos / Staff ---
 class Barbero {
   final String? id;
   final String nombre;
@@ -57,6 +61,43 @@ class Barbero {
   Map<String, dynamic> toMap() {
     return {'nombre': nombre, 'especialidad': especialidad, 'fotoUrl': fotoUrl};
   }
+}
+
+// --- Modelo para los Servicios del Staff ---
+class StaffService {
+  final String id;
+  final String nombre;
+  final int duracionMin;
+  final num precio; // num para permitir int o double
+  final bool activo;
+
+  StaffService({
+    required this.id,
+    required this.nombre,
+    required this.duracionMin,
+    required this.precio,
+    required this.activo,
+  });
+
+  factory StaffService.fromDoc(DocumentSnapshot doc) {
+    final m = doc.data() as Map<String, dynamic>;
+    return StaffService(
+      id: doc.id,
+      nombre: m['nombre'] ?? 'Servicio',
+      duracionMin: (m['duracionMin'] ?? 60) is int
+          ? (m['duracionMin'] ?? 60)
+          : int.tryParse('${m['duracionMin']}') ?? 60,
+      precio: m['precio'] ?? 0,
+      activo: m['activo'] ?? true,
+    );
+  }
+
+  Map<String, dynamic> toMap() => {
+        'nombre': nombre,
+        'duracionMin': duracionMin,
+        'precio': precio,
+        'activo': activo,
+      };
 }
 
 // --- Modelo para las Ventas ---
@@ -92,9 +133,9 @@ class Venta {
   }
 }
 
-// =========================================================================
-// === ESTRUCTURA PRINCIPAL DEL DASHBOARD (EL EDIFICIO) ===
-// =========================================================================
+/// ===============================
+/// DASHBOARD SHELL
+/// ===============================
 class AdminDashboardPage extends StatefulWidget {
   const AdminDashboardPage({super.key});
 
@@ -156,7 +197,11 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                     radius: 30,
                     backgroundColor: Colors.white,
                     child: Text(
-                      auth.currentUser?.email?.substring(0, 1).toUpperCase() ??
+                      AuthService()
+                              .currentUser
+                              ?.email
+                              ?.substring(0, 1)
+                              .toUpperCase() ??
                           'U',
                       style: const TextStyle(
                         fontSize: 24,
@@ -174,7 +219,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                     ),
                   ),
                   Text(
-                    auth.currentUser?.email ?? 'Usuario desconocido',
+                    AuthService().currentUser?.email ?? 'Usuario desconocido',
                     style: const TextStyle(color: Colors.white70),
                   ),
                 ],
@@ -225,9 +270,9 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
   }
 }
 
-// =========================================================================
-// === PISO 1: PÁGINA DE AGENDA (CALENDARIO) ===
-// =========================================================================
+/// ===============================
+/// PISO 1: AGENDA
+/// ===============================
 class AgendaPage extends StatefulWidget {
   const AgendaPage({super.key});
   @override
@@ -292,7 +337,7 @@ class _AgendaPageState extends State<AgendaPage> {
               cita.fecha.month,
               cita.fecha.day,
             );
-            if (_citas[normalizedDate] == null) _citas[normalizedDate] = [];
+            _citas.putIfAbsent(normalizedDate, () => []);
             _citas[normalizedDate]!.add(cita);
           }
           WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -332,10 +377,11 @@ class _AgendaPageState extends State<AgendaPage> {
                 child: ValueListenableBuilder<List<Cita>>(
                   valueListenable: _selectedEvents,
                   builder: (context, value, _) {
-                    if (value.isEmpty)
+                    if (value.isEmpty) {
                       return const Center(
                         child: Text('No hay citas para este día.'),
                       );
+                    }
                     return ListView.builder(
                       itemCount: value.length,
                       itemBuilder: (context, index) {
@@ -361,9 +407,9 @@ class _AgendaPageState extends State<AgendaPage> {
   }
 }
 
-// =========================================================================
-// === PISO 2: PÁGINA DE GESTIÓN DE BARBEROS (CRUD COMPLETO) ===
-// =========================================================================
+/// ===============================
+/// PISO 2: GESTIÓN DE PERSONAL
+/// ===============================
 class BarberosPage extends StatefulWidget {
   const BarberosPage({super.key});
 
@@ -372,14 +418,13 @@ class BarberosPage extends StatefulWidget {
 }
 
 class _BarberosPageState extends State<BarberosPage> {
-  final CollectionReference _barberosCollection = FirebaseFirestore.instance
-      .collection('barberos');
+  final CollectionReference _barberosCollection =
+      FirebaseFirestore.instance.collection('barberos');
 
   void _showBarberoDialog({Barbero? barbero}) {
     final _nombreController = TextEditingController(text: barbero?.nombre);
-    final _especialidadController = TextEditingController(
-      text: barbero?.especialidad,
-    );
+    final _especialidadController =
+        TextEditingController(text: barbero?.especialidad);
     final _fotoUrlController = TextEditingController(text: barbero?.fotoUrl);
     final _formKey = GlobalKey<FormState>();
 
@@ -407,9 +452,8 @@ class _BarberosPageState extends State<BarberosPage> {
                 const SizedBox(height: 20),
                 TextFormField(
                   controller: _nombreController,
-                  decoration: const InputDecoration(
-                    labelText: 'Nombre Completo',
-                  ),
+                  decoration:
+                      const InputDecoration(labelText: 'Nombre Completo'),
                   validator: (value) => (value == null || value.isEmpty)
                       ? 'El nombre es obligatorio'
                       : null,
@@ -417,7 +461,8 @@ class _BarberosPageState extends State<BarberosPage> {
                 const SizedBox(height: 10),
                 TextFormField(
                   controller: _especialidadController,
-                  decoration: const InputDecoration(labelText: 'Especialidad'),
+                  decoration:
+                      const InputDecoration(labelText: 'Especialidad'),
                   validator: (value) => (value == null || value.isEmpty)
                       ? 'La especialidad es obligatoria'
                       : null,
@@ -425,9 +470,7 @@ class _BarberosPageState extends State<BarberosPage> {
                 const SizedBox(height: 10),
                 TextFormField(
                   controller: _fotoUrlController,
-                  decoration: const InputDecoration(
-                    labelText: 'URL de la foto',
-                  ),
+                  decoration: const InputDecoration(labelText: 'URL de la foto'),
                   validator: (value) => (value == null || value.isEmpty)
                       ? 'La URL de la foto es obligatoria'
                       : null,
@@ -438,9 +481,9 @@ class _BarberosPageState extends State<BarberosPage> {
                     if (_formKey.currentState!.validate()) {
                       final newBarbero = Barbero(
                         id: barbero?.id,
-                        nombre: _nombreController.text,
-                        especialidad: _especialidadController.text,
-                        fotoUrl: _fotoUrlController.text,
+                        nombre: _nombreController.text.trim(),
+                        especialidad: _especialidadController.text.trim(),
+                        fotoUrl: _fotoUrlController.text.trim(),
                       );
                       if (barbero == null) {
                         await _barberosCollection.add(newBarbero.toMap());
@@ -469,8 +512,7 @@ class _BarberosPageState extends State<BarberosPage> {
       builder: (context) => AlertDialog(
         title: const Text('Confirmar Eliminación'),
         content: const Text(
-          '¿Estás seguro de que quieres eliminar a este miembro del personal? Esta acción no se puede deshacer.',
-        ),
+            '¿Eliminar a este miembro del personal? Esta acción no se puede deshacer.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
@@ -481,10 +523,7 @@ class _BarberosPageState extends State<BarberosPage> {
               await _barberosCollection.doc(id).delete();
               if (mounted) Navigator.of(context).pop();
             },
-            child: const Text(
-              'Eliminar',
-              style: TextStyle(color: Colors.redAccent),
-            ),
+            child: const Text('Eliminar', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -517,10 +556,8 @@ class _BarberosPageState extends State<BarberosPage> {
             itemBuilder: (context, index) {
               final barbero = barberos[index];
               return Card(
-                margin: const EdgeInsets.symmetric(
-                  vertical: 8.0,
-                  horizontal: 8.0,
-                ),
+                margin:
+                    const EdgeInsets.symmetric(vertical: 8.0, horizontal: 8.0),
                 child: ListTile(
                   contentPadding: const EdgeInsets.all(12.0),
                   leading: CircleAvatar(
@@ -536,12 +573,32 @@ class _BarberosPageState extends State<BarberosPage> {
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
+                      // NUEVO: botón de servicios del trabajador
+                      IconButton(
+                        tooltip: 'Servicios del personal',
+                        icon: const Icon(Icons.design_services_rounded,
+                            color: Colors.amber),
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => StaffServicesPage(
+                                barberoId: barbero.id!,
+                                barberoNombre: barbero.nombre,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
                       IconButton(
                         icon: const Icon(Icons.edit, color: Colors.blueAccent),
+                        tooltip: 'Editar personal',
                         onPressed: () => _showBarberoDialog(barbero: barbero),
                       ),
                       IconButton(
-                        icon: const Icon(Icons.delete, color: Colors.redAccent),
+                        icon:
+                            const Icon(Icons.delete, color: Colors.redAccent),
+                        tooltip: 'Eliminar personal',
                         onPressed: () => _deleteBarbero(barbero.id!),
                       ),
                     ],
@@ -561,9 +618,214 @@ class _BarberosPageState extends State<BarberosPage> {
   }
 }
 
-// =========================================================================
-// === PISO 3: PÁGINA DE DASHBOARD DE VENTAS (GRÁFICOS) ===
-// =========================================================================
+/// ===============================
+/// PÁGINA: SERVICIOS POR TRABAJADOR
+/// ===============================
+class StaffServicesPage extends StatefulWidget {
+  const StaffServicesPage({
+    super.key,
+    required this.barberoId,
+    required this.barberoNombre,
+  });
+
+  final String barberoId;
+  final String barberoNombre;
+
+  @override
+  State<StaffServicesPage> createState() => _StaffServicesPageState();
+}
+
+class _StaffServicesPageState extends State<StaffServicesPage> {
+  CollectionReference<Map<String, dynamic>> get _col =>
+      FirebaseFirestore.instance
+          .collection('barberos')
+          .doc(widget.barberoId)
+          .collection('servicios');
+
+  void _showServicioDialog({StaffService? s}) {
+    final _nombre = TextEditingController(text: s?.nombre);
+    final _dur = TextEditingController(text: (s?.duracionMin ?? 60).toString());
+    final _precio = TextEditingController(text: (s?.precio ?? 0).toString());
+    bool activo = s?.activo ?? true;
+    final _f = GlobalKey<FormState>();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => Padding(
+        padding: EdgeInsets.only(
+          left: 16,
+          right: 16,
+          top: 20,
+          bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+        ),
+        child: Form(
+          key: _f,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                s == null
+                    ? 'Nuevo servicio para ${widget.barberoNombre}'
+                    : 'Editar servicio',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _nombre,
+                decoration:
+                    const InputDecoration(labelText: 'Nombre del servicio'),
+                validator: (v) =>
+                    (v == null || v.trim().isEmpty) ? 'Requerido' : null,
+              ),
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: _dur,
+                decoration: const InputDecoration(
+                  labelText: 'Duración (min)',
+                ),
+                keyboardType: TextInputType.number,
+                validator: (v) {
+                  if (v == null || v.isEmpty) return 'Requerido';
+                  final n = int.tryParse(v);
+                  if (n == null || n <= 0) return 'Minutos inválidos';
+                  return null;
+                },
+              ),
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: _precio,
+                decoration: const InputDecoration(
+                  labelText: 'Precio',
+                  prefixText: '\$ ',
+                ),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                validator: (v) {
+                  if (v == null || v.isEmpty) return 'Requerido';
+                  if (num.tryParse(v) == null) return 'Precio inválido';
+                  return null;
+                },
+              ),
+              const SizedBox(height: 8),
+              SwitchListTile(
+                value: activo,
+                onChanged: (val) => setState(() => activo = val),
+                title: const Text('Activo (visible para tomar reservas)'),
+              ),
+              const SizedBox(height: 12),
+              ElevatedButton(
+                onPressed: () async {
+                  if (!_f.currentState!.validate()) return;
+                  final data = StaffService(
+                    id: s?.id ?? '',
+                    nombre: _nombre.text.trim(),
+                    duracionMin: int.parse(_dur.text.trim()),
+                    precio: num.parse(_precio.text.trim()),
+                    activo: activo,
+                  ).toMap();
+
+                  if (s == null) {
+                    await _col.add(data);
+                  } else {
+                    await _col.doc(s.id).update(data);
+                  }
+                  if (mounted) Navigator.pop(context);
+                },
+                child: Text(s == null ? 'Guardar servicio' : 'Actualizar'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _deleteServicio(String id) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Eliminar servicio'),
+        content: const Text('¿Seguro que deseas eliminar este servicio?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Eliminar', style: TextStyle(color: Colors.red))),
+        ],
+      ),
+    );
+    if (ok == true) await _col.doc(id).delete();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Servicios · ${widget.barberoNombre}'),
+      ),
+      body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+        stream: _col.orderBy('nombre').snapshots(),
+        builder: (_, snap) {
+          if (snap.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snap.hasError) {
+            return Center(child: Text('Error: ${snap.error}'));
+          }
+          final docs = snap.data?.docs ?? [];
+          if (docs.isEmpty) {
+            return const Center(child: Text('Aún no hay servicios.'));
+          }
+          final servicios =
+              docs.map((d) => StaffService.fromDoc(d)).toList();
+
+          return ListView.separated(
+            padding: const EdgeInsets.all(12),
+            itemBuilder: (_, i) {
+              final s = servicios[i];
+              return Card(
+                child: ListTile(
+                  leading: CircleAvatar(
+                    child: Text('${s.duracionMin}m'),
+                  ),
+                  title: Text(s.nombre),
+                  subtitle: Text(
+                      'Precio: \$${NumberFormat.decimalPattern().format(s.precio)} · ${s.activo ? 'Activo' : 'Inactivo'}'),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        tooltip: 'Editar',
+                        icon: const Icon(Icons.edit, color: Colors.blue),
+                        onPressed: () => _showServicioDialog(s: s),
+                      ),
+                      IconButton(
+                        tooltip: 'Eliminar',
+                        icon: const Icon(Icons.delete, color: Colors.red),
+                        onPressed: () => _deleteServicio(s.id),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+            separatorBuilder: (_, __) => const SizedBox(height: 8),
+            itemCount: servicios.length,
+          );
+        },
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => _showServicioDialog(),
+        child: const Icon(Icons.add),
+        tooltip: 'Añadir servicio',
+      ),
+    );
+  }
+}
+
+/// ===============================
+/// PISO 3: DASHBOARD DE VENTAS
+/// ===============================
 class VentasDashboardPage extends StatefulWidget {
   const VentasDashboardPage({super.key});
 
@@ -574,7 +836,6 @@ class VentasDashboardPage extends StatefulWidget {
 class _VentasDashboardPageState extends State<VentasDashboardPage> {
   int touchedIndex = -1;
 
-  // --- NUEVA FUNCIÓN PARA AÑADIR VENTAS ---
   void _showVentaDialog() {
     final _servicioController = TextEditingController();
     final _clienteController = TextEditingController();
@@ -630,8 +891,9 @@ class _VentasDashboardPageState extends State<VentasDashboardPage> {
                   keyboardType: TextInputType.number,
                   validator: (v) {
                     if (v == null || v.isEmpty) return 'Campo requerido';
-                    if (double.tryParse(v) == null)
+                    if (double.tryParse(v) == null) {
                       return 'Ingrese un número válido';
+                    }
                     return null;
                   },
                 ),
@@ -675,7 +937,6 @@ class _VentasDashboardPageState extends State<VentasDashboardPage> {
         }
         if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
           return Scaffold(
-            // Devuelve un Scaffold para que el FAB sea visible
             body: const Center(child: Text('Aún no hay ventas registradas.')),
             floatingActionButton: FloatingActionButton(
               onPressed: _showVentaDialog,
@@ -685,17 +946,13 @@ class _VentasDashboardPageState extends State<VentasDashboardPage> {
           );
         }
 
-        final ventas = snapshot.data!.docs
-            .map((doc) => Venta.fromFirestore(doc))
-            .toList();
-        final double totalVentas = ventas.fold(
-          0,
-          (sum, item) => sum + item.monto,
-        );
+        final ventas =
+            snapshot.data!.docs.map((doc) => Venta.fromFirestore(doc)).toList();
+        final double totalVentas =
+            ventas.fold(0, (sum, item) => sum + item.monto);
         final int totalServicios = ventas.length;
-        final double ticketPromedio = totalServicios > 0
-            ? totalVentas / totalServicios
-            : 0;
+        final double ticketPromedio =
+            totalServicios > 0 ? totalVentas / totalServicios : 0;
         final Map<String, double> ventasPorServicio = {};
         for (var venta in ventas) {
           ventasPorServicio.update(
@@ -857,7 +1114,6 @@ class _VentasDashboardPageState extends State<VentasDashboardPage> {
               ],
             ),
           ),
-          // --- BOTÓN PARA AÑADIR VENTA ---
           floatingActionButton: FloatingActionButton(
             onPressed: _showVentaDialog,
             child: const Icon(Icons.add),
@@ -895,9 +1151,10 @@ class _SummaryCard extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               value,
-              style: Theme.of(
-                context,
-              ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
+              style: Theme.of(context)
+                  .textTheme
+                  .headlineMedium
+                  ?.copyWith(fontWeight: FontWeight.bold),
             ),
           ],
         ),
@@ -906,9 +1163,9 @@ class _SummaryCard extends StatelessWidget {
   }
 }
 
-// =========================================================================
-// === PISO 4: PÁGINA DE CONFIGURACIÓN ===
-// =========================================================================
+/// ===============================
+/// PISO 4: CONFIGURACIÓN
+/// ===============================
 class ConfiguracionPage extends StatefulWidget {
   const ConfiguracionPage({super.key});
   @override
@@ -950,24 +1207,22 @@ class _ConfiguracionPageState extends State<ConfiguracionPage> {
   }
 
   Padding _buildSectionTitle(String title) => Padding(
-    padding: const EdgeInsets.only(bottom: 8.0),
-    child: Text(
-      title,
-      style: TextStyle(
-        fontSize: 18,
-        fontWeight: FontWeight.bold,
-        color: Theme.of(context).colorScheme.primary,
-      ),
-    ),
-  );
+        padding: const EdgeInsets.only(bottom: 8.0),
+        child: Text(
+          title,
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: Theme.of(context).colorScheme.primary,
+          ),
+        ),
+      );
   ListTile _buildConfigOption(
-    String title,
-    IconData icon,
-    VoidCallback onTap,
-  ) => ListTile(
-    leading: Icon(icon),
-    title: Text(title),
-    trailing: const Icon(Icons.chevron_right),
-    onTap: onTap,
-  );
+          String title, IconData icon, VoidCallback onTap) =>
+      ListTile(
+        leading: Icon(icon),
+        title: Text(title),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: onTap,
+      );
 }

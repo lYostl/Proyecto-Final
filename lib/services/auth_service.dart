@@ -1,12 +1,10 @@
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart'; // Importamos Firestore
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AuthService {
   final _auth = FirebaseAuth.instance;
-  final _firestore =
-      FirebaseFirestore.instance; // Creamos una instancia de Firestore
+  final _firestore = FirebaseFirestore.instance;
 
-  // --- REGISTRAR NUEVO USUARIO Y SU NEGOCIO ---
   Future<String?> signUp({
     required String email,
     required String password,
@@ -15,7 +13,6 @@ class AuthService {
     required String tipoNegocio,
   }) async {
     try {
-      // 1. Crear usuario en Firebase Authentication
       final cred = await _auth.createUserWithEmailAndPassword(
         email: email,
         password: password,
@@ -23,7 +20,6 @@ class AuthService {
 
       final user = cred.user;
       if (user != null) {
-        // 2. Guardar datos adicionales en Firestore en la colección 'negocios'
         await _firestore.collection('negocios').doc(user.uid).set({
           'ownerId': user.uid,
           'ownerEmail': email,
@@ -33,13 +29,10 @@ class AuthService {
           'createdAt': FieldValue.serverTimestamp(),
         });
 
-        // 3. Enviar correo de verificación
         await user.sendEmailVerification();
       }
-
-      return null; // Éxito
+      return null;
     } on FirebaseAuthException catch (e) {
-      // Mantenemos tus mensajes de error personalizados
       switch (e.code) {
         case 'email-already-in-use':
           return 'El correo ya está en uso por otra cuenta.';
@@ -55,7 +48,6 @@ class AuthService {
     }
   }
 
-  // --- INICIAR SESIÓN (Le cambiamos el nombre para que coincida) ---
   Future<String?> signIn({
     required String email,
     required String password,
@@ -70,12 +62,16 @@ class AuthService {
         password: password,
       );
 
-      // Mantenemos tu lógica de verificación de correo
-      if (cred.user != null && !cred.user!.emailVerified) {
+      // 🔄 refrescar estado antes de validar verificación
+      await cred.user?.reload();
+      final user = _auth.currentUser;
+
+      if (user != null && !user.emailVerified) {
+        await _auth.signOut();
         return 'Tu correo no ha sido verificado. Revisa tu bandeja de entrada.';
       }
 
-      return null; // Éxito
+      return null;
     } on FirebaseAuthException catch (e) {
       switch (e.code) {
         case 'invalid-email':
@@ -94,7 +90,6 @@ class AuthService {
     }
   }
 
-  // --- CERRAR SESIÓN ---
   Future<String?> signOut() async {
     try {
       await _auth.signOut();
@@ -104,6 +99,5 @@ class AuthService {
     }
   }
 
-  // --- OBTENER USUARIO ACTUAL ---
   User? get currentUser => _auth.currentUser;
 }

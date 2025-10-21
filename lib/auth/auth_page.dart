@@ -10,15 +10,12 @@ class AuthPage extends StatefulWidget {
 
 class _AuthPageState extends State<AuthPage>
     with SingleTickerProviderStateMixin {
-  // Claves para los formularios de validación
   final _loginFormKey = GlobalKey<FormState>();
   final _regFormKey = GlobalKey<FormState>();
 
-  // Controladores para Login
   final _loginEmailCtrl = TextEditingController();
   final _loginPassCtrl = TextEditingController();
 
-  // Controladores para Registro
   final _regNombreCtrl = TextEditingController();
   final _regNegocioNombreCtrl = TextEditingController();
   final _regEmailCtrl = TextEditingController();
@@ -55,7 +52,6 @@ class _AuthPageState extends State<AuthPage>
     super.dispose();
   }
 
-  // Validadores
   String? _textValidator(String? v) {
     if (v == null || v.trim().isEmpty) return 'Este campo es obligatorio';
     return null;
@@ -73,17 +69,27 @@ class _AuthPageState extends State<AuthPage>
     return null;
   }
 
+  // ⬇️ FIX: apagar loader SIEMPRE y rutear al wrapper cuando todo ok
   Future<void> _doLogin() async {
     if (!_loginFormKey.currentState!.validate()) return;
+
     setState(() => _loading = true);
     final err = await _auth.signIn(
       email: _loginEmailCtrl.text.trim(),
       password: _loginPassCtrl.text.trim(),
     );
-    if (mounted && err != null) {
-      setState(() => _loading = false);
+
+    if (!mounted) return;
+
+    setState(() => _loading = false);
+
+    if (err != null) {
       _showSnack(err);
+      return;
     }
+
+    // Resetea la pila y vuelve al AuthWrapper, que mostrará el Dashboard
+    Navigator.of(context).pushNamedAndRemoveUntil('/wrapper', (route) => false);
   }
 
   Future<void> _doRegister() async {
@@ -124,8 +130,6 @@ class _AuthPageState extends State<AuthPage>
 
   @override
   Widget build(BuildContext context) {
-    // --- CAMBIO CLAVE: Envolvemos todo el Scaffold en un GestureDetector ---
-    // Esto nos permite cerrar el teclado al tocar fuera de un campo de texto.
     return GestureDetector(
       onTap: () => FocusScope.of(context).unfocus(),
       child: Scaffold(
@@ -137,7 +141,6 @@ class _AuthPageState extends State<AuthPage>
           backgroundColor: Colors.transparent,
           elevation: 0,
         ),
-        // --- CAMBIO CLAVE: Hacemos que toda la página pueda hacer scroll ---
         body: SingleChildScrollView(
           child: Center(
             child: Padding(
@@ -173,7 +176,6 @@ class _AuthPageState extends State<AuthPage>
                           ],
                         ),
                         const SizedBox(height: 16),
-                        // Quitamos la altura fija y dejamos que el contenido decida su tamaño
                         SizedBox(
                           height: 450,
                           child: TabBarView(
@@ -193,7 +195,6 @@ class _AuthPageState extends State<AuthPage>
     );
   }
 
-  // El formulario de Login no necesita scroll, así que se queda igual
   Widget _buildLoginForm() {
     return Form(
       key: _loginFormKey,
@@ -221,10 +222,7 @@ class _AuthPageState extends State<AuthPage>
               onPressed: _loading ? null : _doLogin,
               child: _loading
                   ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
+                      height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2))
                   : const Text('Entrar'),
             ),
           ),
@@ -238,56 +236,43 @@ class _AuthPageState extends State<AuthPage>
     );
   }
 
-  // --- CAMBIO CLAVE: El formulario de Registro ahora tiene su propio Scroll ---
-  // por si el contenido sigue siendo muy alto en pantallas pequeñas.
   Widget _buildRegisterForm() {
     return Form(
       key: _regFormKey,
       child: SingleChildScrollView(
         child: Column(
           children: [
-            const SizedBox(height: 20), // Espacio extra al inicio
+            const SizedBox(height: 20),
             TextFormField(
               controller: _regNombreCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Tu Nombre y Apellido',
-              ),
+              decoration: const InputDecoration(labelText: 'Tu Nombre y Apellido'),
               validator: _textValidator,
             ),
             const SizedBox(height: 12),
             TextFormField(
               controller: _regNegocioNombreCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Nombre de tu Negocio',
-              ),
+              decoration: const InputDecoration(labelText: 'Nombre de tu Negocio'),
               validator: _textValidator,
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
               value: _tipoNegocioSeleccionado,
               hint: const Text('Tipo de Negocio'),
-              onChanged: (String? newValue) =>
-                  setState(() => _tipoNegocioSeleccionado = newValue),
-              items: _tiposDeNegocio.map((tipo) {
-                return DropdownMenuItem<String>(value: tipo, child: Text(tipo));
-              }).toList(),
-              validator: (value) => value == null ? 'Selecciona un tipo' : null,
+              onChanged: (v) => setState(() => _tipoNegocioSeleccionado = v),
+              items: _tiposDeNegocio.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
+              validator: (v) => v == null ? 'Selecciona un tipo' : null,
             ),
             const SizedBox(height: 12),
             TextFormField(
               controller: _regEmailCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Correo Electrónico',
-              ),
+              decoration: const InputDecoration(labelText: 'Correo Electrónico'),
               validator: _emailValidator,
               keyboardType: TextInputType.emailAddress,
             ),
             const SizedBox(height: 12),
             TextFormField(
               controller: _regPassCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Crea una Contraseña',
-              ),
+              decoration: const InputDecoration(labelText: 'Crea una Contraseña'),
               validator: _passwordValidator,
               obscureText: true,
             ),
@@ -297,11 +282,7 @@ class _AuthPageState extends State<AuthPage>
               child: ElevatedButton(
                 onPressed: _loading ? null : _doRegister,
                 child: _loading
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
+                    ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2))
                     : const Text('Crear Cuenta Gratis'),
               ),
             ),
