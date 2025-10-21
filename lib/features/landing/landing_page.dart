@@ -1,8 +1,9 @@
 // lib/features/landing/landing_page.dart
-
 import 'dart:async';
 import 'package:flutter/material.dart';
-// --- CAMBIO 1: Importar la página de reserva ---
+
+// --- RUTA CORREGIDA ---
+// La ruta correcta es relativa, ya que 'public_booking' está dentro de 'landing'.
 import '../public_booking/booking_page.dart';
 
 class LandingPage extends StatefulWidget {
@@ -38,7 +39,7 @@ class _LandingPageState extends State<LandingPage> {
     Navigator.pushNamed(context, '/auth');
   }
 
-  // --- CAMBIO 2: Nueva función para el CLIENTE que quiere agendar ---
+  // Esta función es para el CLIENTE que quiere agendar
   void _navigateToBooking() {
     Navigator.push(
       context,
@@ -61,8 +62,6 @@ class _LandingPageState extends State<LandingPage> {
             onPrecios: () => _scrollTo(_priceKey),
             onAdapt: () => _scrollTo(_adaptKey),
             onLogin: _navigateToAdminLogin,
-            onCTA:
-                _navigateToAdminLogin, // << CAMBIO: Ahora va a Iniciar Sesión también
           ),
           Expanded(
             child: SingleChildScrollView(
@@ -74,7 +73,8 @@ class _LandingPageState extends State<LandingPage> {
                       vertical: 56,
                       horizontal: 24,
                     ),
-                    child: _HeroWithTabs(onCta: _navigateToBooking),
+                    // --- CAMBIO CLAVE: El botón del medio ahora va al login ---
+                    child: _HeroWithTabs(onCta: _navigateToAdminLogin),
                   ),
                   _Section(
                     key: _servicesKey,
@@ -85,6 +85,7 @@ class _LandingPageState extends State<LandingPage> {
                     ),
                     child: _ImpulsaTusHorarios(
                       onCardTap: (route) {
+                        // Las tarjetas como "Agenda Online" SÍ deben llevar a la reserva del cliente
                         _navigateToBooking();
                       },
                     ),
@@ -139,9 +140,9 @@ class _LandingPageState extends State<LandingPage> {
                       vertical: 56,
                       horizontal: 24,
                     ),
-                    child: _PricingSimple(onChoose: _navigateToBooking),
+                    child: _PricingSimple(onChoose: _navigateToAdminLogin),
                   ),
-                  _FooterCTA(onCta: _navigateToBooking),
+                  _FooterCTA(onCta: _navigateToAdminLogin),
                 ],
               ),
             ),
@@ -153,12 +154,8 @@ class _LandingPageState extends State<LandingPage> {
 }
 
 // ======================================================================
-// AQUÍ VA TODO EL RESTO DE TU CÓDIGO (_Navbar, _HeroWithTabs, etc.)
-// No necesitas cambiar nada en los demás widgets.
+// WIDGETS INTERNOS DE LA PÁGINA
 // ======================================================================
-/* ============================================================
- * NAVBAR con menús hover básicos
- * ============================================================ */
 
 class _Navbar extends StatelessWidget {
   final VoidCallback onHome;
@@ -169,8 +166,8 @@ class _Navbar extends StatelessWidget {
   final VoidCallback onPrecios;
   final VoidCallback onAdapt;
   final VoidCallback onLogin;
-  final VoidCallback onCTA;
 
+  // --- CAMBIO: Se elimina onCTA porque ya no existe el botón ---
   const _Navbar({
     required this.onHome,
     required this.onServicios,
@@ -180,7 +177,6 @@ class _Navbar extends StatelessWidget {
     required this.onPrecios,
     required this.onAdapt,
     required this.onLogin,
-    required this.onCTA,
   });
 
   @override
@@ -194,7 +190,6 @@ class _Navbar extends StatelessWidget {
         ),
         child: Row(
           children: [
-            // Marca
             Row(
               children: [
                 Container(
@@ -215,12 +210,9 @@ class _Navbar extends StatelessWidget {
               ],
             ),
             const Spacer(),
-
             _NavBtn('Inicio', onHome),
             _NavBtn('Servicios', onServicios),
             _NavBtn('Cómo funciona', onComoFunciona),
-
-            // Menú hover “Funcionalidades”
             _HoverMenuButton(
               label: 'Funcionalidades',
               menuBuilder: (close) => _MenuCard(
@@ -286,20 +278,14 @@ class _Navbar extends StatelessWidget {
                 ],
               ),
             ),
-
             _NavBtn('FAQs', onFaq),
             _NavBtn('Precios', onPrecios),
             _NavBtn('Rubros', onAdapt),
-
-            const SizedBox(width: 8),
-            TextButton(
+            const SizedBox(width: 16),
+            // --- CAMBIO CLAVE: Eliminamos el botón "Registrarse" y dejamos solo "Iniciar Sesión" ---
+            ElevatedButton(
               onPressed: onLogin,
               child: const Text('Iniciar Sesión'),
-            ), // << CAMBIO DE TEXTO
-            const SizedBox(width: 8),
-            ElevatedButton(
-              onPressed: onCTA,
-              child: const Text('Prueba gratis'),
             ),
           ],
         ),
@@ -320,10 +306,6 @@ class _NavBtn extends StatelessWidget {
     );
   }
 }
-
-/* ============================================================
- * HERO con tabs + slider (autoplay)
- * ============================================================ */
 
 class _HeroWithTabs extends StatefulWidget {
   const _HeroWithTabs({required this.onCta});
@@ -350,8 +332,9 @@ class _HeroWithTabsState extends State<_HeroWithTabs> {
   void initState() {
     super.initState();
     _timer = Timer.periodic(const Duration(seconds: 5), (_) {
+      if (!mounted) return;
       _index = (_index + 1) % _tabs.length;
-      if (mounted && _controller.hasClients) {
+      if (_controller.hasClients) {
         _controller.animateToPage(
           _index,
           duration: const Duration(milliseconds: 500),
@@ -385,14 +368,12 @@ class _HeroWithTabsState extends State<_HeroWithTabs> {
           style: TextStyle(color: Colors.white.withOpacity(0.85)),
         ),
         const SizedBox(height: 20),
+        // --- CAMBIO DE NOMBRE ---
         ElevatedButton(
           onPressed: widget.onCta,
-          child: const Text('Prueba gratis ➜'),
+          child: const Text('Regístrate ahora ➜'),
         ),
-
         const SizedBox(height: 18),
-
-        // Tabs
         Wrap(
           alignment: WrapAlignment.center,
           spacing: 12,
@@ -420,10 +401,7 @@ class _HeroWithTabsState extends State<_HeroWithTabs> {
               ),
           ],
         ),
-
         const SizedBox(height: 22),
-
-        // Slider de imágenes
         AspectRatio(
           aspectRatio: 16 / 7.8,
           child: ClipRRect(
@@ -439,8 +417,8 @@ class _HeroWithTabsState extends State<_HeroWithTabs> {
                     _tabs[i].$3,
                     fit: BoxFit.cover,
                     errorBuilder: (context, error, stackTrace) => Container(
-                      color: Colors.grey,
-                      child: Center(child: Text('Error al cargar imagen')),
+                      color: Colors.grey[800],
+                      child: const Center(child: Text('Imagen no disponible')),
                     ),
                   ),
                   Container(
@@ -464,10 +442,6 @@ class _HeroWithTabsState extends State<_HeroWithTabs> {
     );
   }
 }
-
-/* ============================================================
- * IMPULSA TUS HORARIOS (cards)
- * ============================================================ */
 
 class _ImpulsaTusHorarios extends StatelessWidget {
   final void Function(String route) onCardTap;
@@ -532,9 +506,9 @@ class _ImpulsaTusHorarios extends StatelessWidget {
                           fit: BoxFit.cover,
                           errorBuilder: (context, error, stackTrace) =>
                               Container(
-                                color: Colors.grey,
-                                child: Center(
-                                  child: Text('Error al cargar imagen'),
+                                color: Colors.grey[800],
+                                child: const Center(
+                                  child: Text('Imagen no disponible'),
                                 ),
                               ),
                         ),
@@ -575,10 +549,6 @@ class _ImpulsaTusHorarios extends StatelessWidget {
   }
 }
 
-/* ============================================================
- * Una competencia única... + mock de web/móvil
- * ============================================================ */
-
 class _UniqueValueAndMock extends StatelessWidget {
   const _UniqueValueAndMock({required this.onCta});
   final VoidCallback onCta;
@@ -600,8 +570,6 @@ class _UniqueValueAndMock extends StatelessWidget {
             child: const Text('Crear tu cuenta gratis'),
           ),
           const SizedBox(height: 22),
-
-          // Mock lado a lado
           LayoutBuilder(
             builder: (_, c) {
               final isNarrow = c.maxWidth < 900;
@@ -619,9 +587,9 @@ class _UniqueValueAndMock extends StatelessWidget {
                           fit: BoxFit.cover,
                           errorBuilder: (context, error, stackTrace) =>
                               Container(
-                                color: Colors.grey,
-                                child: Center(
-                                  child: Text('Error al cargar imagen'),
+                                color: Colors.grey[800],
+                                child: const Center(
+                                  child: Text('Imagen no disponible'),
                                 ),
                               ),
                         ),
@@ -639,9 +607,9 @@ class _UniqueValueAndMock extends StatelessWidget {
                           fit: BoxFit.cover,
                           errorBuilder: (context, error, stackTrace) =>
                               Container(
-                                color: Colors.grey,
-                                child: Center(
-                                  child: Text('Error al cargar imagen'),
+                                color: Colors.grey[800],
+                                child: const Center(
+                                  child: Text('Imagen no disponible'),
                                 ),
                               ),
                         ),
@@ -657,10 +625,6 @@ class _UniqueValueAndMock extends StatelessWidget {
     );
   }
 }
-
-/* ============================================================
- * Cómo funciona (3 pasos)
- * ============================================================ */
 
 class _HowItWorks extends StatelessWidget {
   const _HowItWorks();
@@ -712,10 +676,6 @@ class _HowItWorks extends StatelessWidget {
   }
 }
 
-/* ============================================================
- * Funcionalidades (bullets CAPTA / GESTIONA)
- * ============================================================ */
-
 class _FeaturesBullets extends StatelessWidget {
   const _FeaturesBullets();
 
@@ -744,6 +704,7 @@ class _FeaturesBullets extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             col('CAPTA', const [
               'Agenda online sin login',
@@ -780,10 +741,6 @@ class _Bullet extends StatelessWidget {
     );
   }
 }
-
-/* ============================================================
- * Testimonios (placeholder)
- * ============================================================ */
 
 class _Testimonials extends StatelessWidget {
   const _Testimonials();
@@ -833,10 +790,6 @@ class _Testimonials extends StatelessWidget {
     );
   }
 }
-
-/* ============================================================
- * FAQs (expansion)
- * ============================================================ */
 
 class _Faqs extends StatelessWidget {
   const _Faqs();
@@ -891,10 +844,6 @@ class _Faqs extends StatelessWidget {
   }
 }
 
-/* ============================================================
- * Nos adaptamos a tu negocio (chips redondos auto-scroll)
- * ============================================================ */
-
 class _AdaptamosRubros extends StatelessWidget {
   const _AdaptamosRubros();
 
@@ -943,9 +892,8 @@ class _AutoScrollChipsState extends State<_AutoScrollChips> {
   @override
   void initState() {
     super.initState();
-    // Scroll suave infinito
     _timer = Timer.periodic(const Duration(milliseconds: 35), (_) {
-      if (!_sc.hasClients) return;
+      if (!_sc.hasClients || !mounted) return;
       final max = _sc.position.maxScrollExtent;
       final next = _sc.offset + 1.5;
       _sc.jumpTo(next >= max ? 0 : next);
@@ -961,7 +909,6 @@ class _AutoScrollChipsState extends State<_AutoScrollChips> {
 
   @override
   Widget build(BuildContext context) {
-    // Duplicamos la lista para efecto loop visual más largo
     final data = [...widget.items, ...widget.items];
     return SizedBox(
       height: 84,
@@ -976,7 +923,7 @@ class _AutoScrollChipsState extends State<_AutoScrollChips> {
               radius: 26,
               backgroundColor: const Color(0xFF1F2340),
               child: Text(
-                data[i][0], // inicial
+                data[i][0],
                 style: const TextStyle(fontWeight: FontWeight.w800),
               ),
             ),
@@ -988,10 +935,6 @@ class _AutoScrollChipsState extends State<_AutoScrollChips> {
     );
   }
 }
-
-/* ============================================================
- * Precios simple
- * ============================================================ */
 
 class _PricingSimple extends StatelessWidget {
   const _PricingSimple({required this.onChoose});
@@ -1096,10 +1039,6 @@ class _PriceCard extends StatelessWidget {
   }
 }
 
-/* ============================================================
- * Footer con CTA + contacto
- * ============================================================ */
-
 class _FooterCTA extends StatelessWidget {
   const _FooterCTA({required this.onCta});
   final VoidCallback onCta;
@@ -1130,8 +1069,6 @@ class _FooterCTA extends StatelessWidget {
                 child: const Text('Crea tu cuenta YA'),
               ),
               const SizedBox(height: 28),
-
-              // Footer columns
               Wrap(
                 spacing: 32,
                 runSpacing: 12,
@@ -1203,12 +1140,6 @@ class _FooterCol extends StatelessWidget {
   }
 }
 
-// PRUEBA DE CAMBIO PARA GIT
-
-/* ============================================================
- * Infra de menú hover
- * ============================================================ */
-
 class _HoverMenuButton extends StatefulWidget {
   final String label;
   final Widget Function(VoidCallback close) menuBuilder;
@@ -1225,8 +1156,9 @@ class _HoverMenuButtonState extends State<_HoverMenuButton> {
   bool _hoveringMenu = false;
 
   void _show() {
-    if (_entry != null) return;
-    final render = _key.currentContext!.findRenderObject() as RenderBox;
+    if (!mounted) return;
+    final render = _key.currentContext?.findRenderObject() as RenderBox?;
+    if (render == null) return;
     final offset = render.localToGlobal(Offset.zero);
     final size = render.size;
 
@@ -1265,7 +1197,7 @@ class _HoverMenuButtonState extends State<_HoverMenuButton> {
     return MouseRegion(
       onEnter: (_) {
         _hoveringBtn = true;
-        if (_key.currentContext != null) _show();
+        _show();
       },
       onExit: (_) {
         _hoveringBtn = false;
@@ -1375,10 +1307,6 @@ class _MenuItem extends StatelessWidget {
     );
   }
 }
-
-/* ============================================================
- * Sección base
- * ============================================================ */
 
 class _Section extends StatelessWidget {
   final Widget child;
