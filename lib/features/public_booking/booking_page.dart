@@ -2,42 +2,56 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 
-// Modelo para los barberos, para que el cliente pueda elegir
-class Barbero {
+// --- Clase Personal con igualdad implementada ---
+class Personal {
   final String id;
   final String nombre;
-  final String especialidad;
-  Barbero({required this.id, required this.nombre, required this.especialidad});
+  final String servicio;
+
+  Personal({required this.id, required this.nombre, required this.servicio});
+
+  factory Personal.fromFirestore(DocumentSnapshot doc) {
+    Map data = doc.data() as Map<String, dynamic>;
+    return Personal(
+      id: doc.id,
+      nombre: data['nombre'] ?? 'Sin nombre',
+      servicio: data['servicio'] ?? 'Sin servicio',
+    );
+  }
+
+  // --- AÑADIDO: Lógica de igualdad ---
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true; // Si es el mismo objeto en memoria
+
+    return other is Personal && // Si el otro objeto es de tipo Personal
+        other.id == id; // Comparamos solo por ID (suficiente en este caso)
+  }
+
+  @override
+  int get hashCode => id.hashCode; // El hashCode debe basarse en lo que usas para ==
+  // --- FIN AÑADIDO ---
 }
+// --- Fin clase Personal ---
 
 class BookingPage extends StatefulWidget {
-  const BookingPage({super.key});
+  final String negocioId;
+  const BookingPage({super.key, required this.negocioId});
+
   @override
   State<BookingPage> createState() => _BookingPageState();
 }
 
 class _BookingPageState extends State<BookingPage> {
-  // Estado del formulario
-  Barbero? _selectedBarbero;
+  // --- CAMBIO 2: Actualizamos el tipo de la variable ---
+  Personal? _selectedPersonal;
+  // ----------------------------------------------------
   DateTime? _selectedDate;
   String? _selectedTime;
   final _nombreController = TextEditingController();
   final _emailController = TextEditingController();
   bool _isLoading = false;
 
-  // Datos de ejemplo (en una app real, vendrían de Firestore)
-  final List<Barbero> _barberos = [
-    Barbero(
-      id: '1',
-      nombre: 'Carlos Gutierrez',
-      especialidad: 'Cortes clásicos',
-    ),
-    Barbero(
-      id: '2',
-      nombre: 'Matias Rodriguez',
-      especialidad: 'Diseños y Color',
-    ),
-  ];
   final List<String> _availableTimes = [
     '09:00',
     '10:00',
@@ -64,8 +78,8 @@ class _BookingPageState extends State<BookingPage> {
   }
 
   Future<void> _submitBooking() async {
-    // Validaciones simples
-    if (_selectedBarbero == null ||
+    // --- CAMBIO 3: Usamos la nueva variable ---
+    if (_selectedPersonal == null ||
         _selectedDate == null ||
         _selectedTime == null ||
         _nombreController.text.isEmpty ||
@@ -75,30 +89,30 @@ class _BookingPageState extends State<BookingPage> {
       );
       return;
     }
+    // ------------------------------------------
 
     setState(() => _isLoading = true);
 
     try {
-      // Combinar fecha y hora
       final format = DateFormat("yyyy-MM-dd HH:mm");
       final DateTime fullDateTime = format.parse(
         "${DateFormat('yyyy-MM-dd').format(_selectedDate!)} $_selectedTime",
       );
 
-      // Referencia a la colección 'citas' en Firestore
       final citasCollection = FirebaseFirestore.instance.collection('citas');
 
-      // Crear el nuevo documento con los datos que definiste
+      // --- CAMBIO 4: Actualizamos los campos a guardar ---
       await citasCollection.add({
-        'barberoId': _selectedBarbero!.id,
+        'personalId': _selectedPersonal!.id, // <-- Campo actualizado
         'nombreCliente': _nombreController.text,
         'emailCliente': _emailController.text,
-        'fecha': Timestamp.fromDate(fullDateTime), // Guardamos como Timestamp
-        'servicio': 'Corte de Pelo', // Ejemplo, podría ser un selector
+        'fecha': Timestamp.fromDate(fullDateTime),
+        'servicio': _selectedPersonal!.servicio, // <-- Usamos el servicio real
         'estado': 'confirmada',
+        'negocioId': widget.negocioId,
       });
+      // -------------------------------------------------
 
-      // Mensaje de éxito y volver a la página anterior
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('¡Cita agendada con éxito!'),
@@ -127,17 +141,65 @@ class _BookingPageState extends State<BookingPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            DropdownButtonFormField<Barbero>(
-              value: _selectedBarbero,
-              hint: const Text('Selecciona un Barbero'),
-              onChanged: (Barbero? newValue) =>
-                  setState(() => _selectedBarbero = newValue),
-              items: _barberos.map((barbero) {
-                return DropdownMenuItem<Barbero>(
-                  value: barbero,
-                  child: Text(barbero.nombre),
+            StreamBuilder<QuerySnapshot>(
+              // --- CAMBIO 5: Apuntamos a la nueva colección ---
+              stream: FirebaseFirestore.instance
+                  .collection('personal') // <-- ¡AQUÍ!
+                  .where('negocioId', isEqualTo: widget.negocioId)
+                  .snapshots(),
+              // -----------------------------------------------
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (snapshot.hasError) {
+                  // Añadimos un mensaje de error más específico aquí
+                  print('Error al cargar personal: ${snapshot.error}');
+                  return const ListTile(
+                    title: Text('Error al cargar el personal.'),
+                  );
+                }
+                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                  return const ListTile(
+                    // --- CAMBIO 6: Texto actualizado ---
+                    title: Text('No hay personal disponible en este momento.'),
+                    // ---------------------------------
+                  );
+                }
+
+                // --- CAMBIO 7: Usamos la nueva clase y variables ---
+                final personalList = snapshot.data!.docs
+                    .map((doc) => Personal.fromFirestore(doc))
+                    .toList();
+
+                // Intentamos mantener la selección si ya existía y está en la nueva lista
+                if (_selectedPersonal != null &&
+                    !personalList.contains(_selectedPersonal)) {
+                  _selectedPersonal =
+                      null; // Resetea si el seleccionado ya no está
+                }
+
+                return DropdownButtonFormField<Personal>(
+                  value: _selectedPersonal,
+                  hint: const Text('Selecciona un Profesional'),
+                  onChanged: (Personal? newValue) =>
+                      setState(() => _selectedPersonal = newValue),
+                  items: personalList.map((personal) {
+                    return DropdownMenuItem<Personal>(
+                      value: personal, // <-- El objeto Personal completo
+                      child: Text(personal.nombre),
+                    );
+                  }).toList(),
+                  // -------------------------------------------------
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                  ),
                 );
-              }).toList(),
+              },
             ),
             const SizedBox(height: 20),
             ListTile(

@@ -5,20 +5,20 @@ import 'package:table_calendar/table_calendar.dart';
 import 'package:fl_chart/fl_chart.dart'; // Paquete de gráficos
 import '../../services/auth_service.dart';
 
-// --- Modelo para las Citas (MODIFICADO) ---
+// --- Modelo para las Citas (Sin cambios, ya estaba bien) ---
 class Cita {
   final String id;
   final String nombreCliente;
   final String servicio;
   final DateTime fecha;
-  final String negocioId; // <-- AÑADIDO
+  final String negocioId;
 
   Cita({
     required this.id,
     required this.nombreCliente,
     required this.servicio,
     required this.fecha,
-    required this.negocioId, // <-- AÑADIDO
+    required this.negocioId,
   });
 
   factory Cita.fromFirestore(DocumentSnapshot doc) {
@@ -28,66 +28,63 @@ class Cita {
       nombreCliente: data['nombreCliente'] ?? 'Cliente sin nombre',
       servicio: data['servicio'] ?? 'Servicio no especificado',
       fecha: (data['fecha'] as Timestamp).toDate(),
-      negocioId: data['negocioId'] ?? '', // <-- AÑADIDO
+      negocioId: data['negocioId'] ?? '',
     );
   }
-
-  // Nota: No necesitamos un 'toMap' para Citas aquí
-  // porque no las estás creando desde el admin, pero si lo necesitaras,
-  // deberías añadir 'negocioId': negocioId.
 }
 
-// --- Modelo para los Barberos (MODIFICADO) ---
-class Barbero {
+// --- CAMBIO 1: Modelo para el Personal (Antes 'Barbero') ---
+class Personal {
   final String? id;
   final String nombre;
-  final String especialidad;
+  final String servicio; // <-- Renombrado de 'especialidad'
   final String fotoUrl;
-  final String negocioId; // <-- AÑADIDO
+  final String negocioId;
 
-  Barbero({
+  Personal({
     this.id,
     required this.nombre,
-    required this.especialidad,
+    required this.servicio, // <-- Renombrado de 'especialidad'
     required this.fotoUrl,
-    required this.negocioId, // <-- AÑADIDO
+    required this.negocioId,
   });
 
-  factory Barbero.fromFirestore(DocumentSnapshot doc) {
+  factory Personal.fromFirestore(DocumentSnapshot doc) {
     Map data = doc.data() as Map<String, dynamic>;
-    return Barbero(
+    return Personal(
       id: doc.id,
       nombre: data['nombre'] ?? '',
-      especialidad: data['especialidad'] ?? '',
+      servicio: data['servicio'] ?? '', // <-- Renombrado de 'especialidad'
       fotoUrl: data['fotoUrl'] ?? 'https://placehold.co/100x100/eee/000?text=?',
-      negocioId: data['negocioId'] ?? '', // <-- AÑADIDO
+      negocioId: data['negocioId'] ?? '',
     );
   }
 
   Map<String, dynamic> toMap() {
     return {
       'nombre': nombre,
-      'especialidad': especialidad,
+      'servicio': servicio, // <-- Renombrado de 'especialidad'
       'fotoUrl': fotoUrl,
-      'negocioId': negocioId, // <-- AÑADIDO
+      'negocioId': negocioId,
     };
   }
 }
+// --- FIN CAMBIO 1 ---
 
-// --- Modelo para las Ventas (MODIFICADO) ---
+// --- Modelo para las Ventas (Sin cambios, ya estaba bien) ---
 class Venta {
   final String servicio;
   final String cliente;
   final double monto;
   final DateTime fecha;
-  final String negocioId; // <-- AÑADIDO
+  final String negocioId;
 
   Venta({
     required this.servicio,
     required this.cliente,
     required this.monto,
     required this.fecha,
-    required this.negocioId, // <-- AÑADIDO
+    required this.negocioId,
   });
 
   factory Venta.fromFirestore(DocumentSnapshot doc) {
@@ -97,7 +94,7 @@ class Venta {
       cliente: data['cliente'] ?? 'N/A',
       monto: (data['monto'] ?? 0.0).toDouble(),
       fecha: (data['fecha'] as Timestamp).toDate(),
-      negocioId: data['negocioId'] ?? '', // <-- AÑADIDO
+      negocioId: data['negocioId'] ?? '',
     );
   }
   Map<String, dynamic> toMap() {
@@ -106,13 +103,13 @@ class Venta {
       'cliente': cliente,
       'monto': monto,
       'fecha': Timestamp.fromDate(fecha),
-      'negocioId': negocioId, // <-- AÑADIDO
+      'negocioId': negocioId,
     };
   }
 }
 
 // =========================================================================
-// === ESTRUCTURA PRINCIPAL DEL DASHBOARD (MODIFICADO) ===
+// === ESTRUCTURA PRINCIPAL DEL DASHBOARD ===
 // =========================================================================
 class AdminDashboardPage extends StatefulWidget {
   const AdminDashboardPage({super.key});
@@ -127,7 +124,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
 
   final List<String> _pageTitles = [
     'Calendario de Clientes',
-    'Gestión de Personal',
+    'Gestión de Personal', // <-- El título ya era genérico, ¡perfecto!
     'Dashboard',
     'Configuración',
   ];
@@ -141,10 +138,8 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
   @override
   Widget build(BuildContext context) {
     final auth = AuthService();
-    // --- 1. OBTENER EL ID DEL DUEÑO DEL NEGOCIO ---
     final String? userId = auth.currentUser?.uid;
 
-    // --- 2. MANEJAR CASO DE ERROR (POCO PROBABLE PERO NECESARIO) ---
     if (userId == null) {
       return Scaffold(
         body: Center(
@@ -235,15 +230,16 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
           ],
         ),
       ),
-      // --- 3. PASAR EL ID A LAS PÁGINAS HIJAS ---
       body: PageView(
         controller: _pageController,
         onPageChanged: (index) => setState(() => _selectedIndex = index),
         children: [
-          AgendaPage(negocioId: userId), // <-- MODIFICADO
-          BarberosPage(negocioId: userId), // <-- MODIFICADO
-          VentasDashboardPage(negocioId: userId), // <-- MODIFICADO
-          const ConfiguracionPage(), // (Esta no lo necesita)
+          AgendaPage(negocioId: userId),
+          // --- CAMBIO 2: Llamamos a la página 'PersonalPage' ---
+          PersonalPage(negocioId: userId), // <-- ANTES 'BarberosPage'
+          // --- FIN CAMBIO 2 ---
+          VentasDashboardPage(negocioId: userId),
+          const ConfiguracionPage(),
         ],
       ),
     );
@@ -274,10 +270,9 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
 }
 
 // =========================================================================
-// === PISO 1: PÁGINA DE AGENDA (MODIFICADO) ===
+// === PISO 1: PÁGINA DE AGENDA (Sin cambios, ya estaba bien) ===
 // =========================================================================
 class AgendaPage extends StatefulWidget {
-  // --- AÑADIDO PARA RECIBIR EL ID ---
   final String negocioId;
   const AgendaPage({super.key, required this.negocioId});
 
@@ -323,10 +318,9 @@ class _AgendaPageState extends State<AgendaPage> {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<QuerySnapshot>(
-      // --- MODIFICADO: AÑADIDO EL FILTRO .where() ---
       stream: FirebaseFirestore.instance
           .collection('citas')
-          .where('negocioId', isEqualTo: widget.negocioId) // <-- FILTRO
+          .where('negocioId', isEqualTo: widget.negocioId)
           .orderBy('fecha')
           .snapshots(),
       builder: (context, snapshot) {
@@ -415,27 +409,26 @@ class _AgendaPageState extends State<AgendaPage> {
 }
 
 // =========================================================================
-// === PISO 2: PÁGINA DE GESTIÓN DE BARBEROS (MODIFICADO) ===
+// === CAMBIO 3: PÁGINA DE GESTIÓN DE PERSONAL (Antes 'BarberosPage') ===
 // =========================================================================
-class BarberosPage extends StatefulWidget {
-  // --- AÑADIDO PARA RECIBIR EL ID ---
+class PersonalPage extends StatefulWidget {
   final String negocioId;
-  const BarberosPage({super.key, required this.negocioId});
+  const PersonalPage({super.key, required this.negocioId});
 
   @override
-  State<BarberosPage> createState() => _BarberosPageState();
+  State<PersonalPage> createState() => _PersonalPageState();
 }
 
-class _BarberosPageState extends State<BarberosPage> {
-  final CollectionReference _barberosCollection = FirebaseFirestore.instance
-      .collection('barberos');
+class _PersonalPageState extends State<PersonalPage> {
+  // --- APUNTAMOS A LA COLECCIÓN 'personal' ---
+  final CollectionReference _personalCollection = FirebaseFirestore.instance
+      .collection('personal');
 
-  void _showBarberoDialog({Barbero? barbero}) {
-    final _nombreController = TextEditingController(text: barbero?.nombre);
-    final _especialidadController = TextEditingController(
-      text: barbero?.especialidad,
-    );
-    final _fotoUrlController = TextEditingController(text: barbero?.fotoUrl);
+  void _showPersonalDialog({Personal? personal}) {
+    final _nombreController = TextEditingController(text: personal?.nombre);
+    // --- Usamos 'servicio' ---
+    final _servicioController = TextEditingController(text: personal?.servicio);
+    final _fotoUrlController = TextEditingController(text: personal?.fotoUrl);
     final _formKey = GlobalKey<FormState>();
 
     showModalBottomSheet(
@@ -456,7 +449,7 @@ class _BarberosPageState extends State<BarberosPage> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text(
-                  barbero == null ? 'Añadir Personal' : 'Editar Personal',
+                  personal == null ? 'Añadir Personal' : 'Editar Personal',
                   style: Theme.of(context).textTheme.headlineSmall,
                 ),
                 const SizedBox(height: 20),
@@ -470,11 +463,14 @@ class _BarberosPageState extends State<BarberosPage> {
                       : null,
                 ),
                 const SizedBox(height: 10),
+                // --- Usamos 'servicio' ---
                 TextFormField(
-                  controller: _especialidadController,
-                  decoration: const InputDecoration(labelText: 'Especialidad'),
+                  controller: _servicioController,
+                  decoration: const InputDecoration(
+                    labelText: 'Servicio',
+                  ), // <-- Texto UI
                   validator: (value) => (value == null || value.isEmpty)
-                      ? 'La especialidad es obligatoria'
+                      ? 'El servicio es obligatorio' // <-- Texto UI
                       : null,
                 ),
                 const SizedBox(height: 10),
@@ -491,25 +487,27 @@ class _BarberosPageState extends State<BarberosPage> {
                 ElevatedButton(
                   onPressed: () async {
                     if (_formKey.currentState!.validate()) {
-                      // --- MODIFICADO: AÑADIDO EL 'negocioId' ---
-                      final newBarbero = Barbero(
-                        id: barbero?.id,
+                      // --- Creamos un objeto 'Personal' ---
+                      final newPersonal = Personal(
+                        id: personal?.id,
                         nombre: _nombreController.text,
-                        especialidad: _especialidadController.text,
+                        servicio:
+                            _servicioController.text, // <-- Usamos servicio
                         fotoUrl: _fotoUrlController.text,
-                        negocioId: widget.negocioId, // <-- SELLA EL DOCUMENTO
+                        negocioId: widget.negocioId,
                       );
-                      if (barbero == null) {
-                        await _barberosCollection.add(newBarbero.toMap());
+                      // --- Guardamos en la colección 'personal' ---
+                      if (personal == null) {
+                        await _personalCollection.add(newPersonal.toMap());
                       } else {
-                        await _barberosCollection
-                            .doc(barbero.id)
-                            .update(newBarbero.toMap());
+                        await _personalCollection
+                            .doc(personal.id)
+                            .update(newPersonal.toMap());
                       }
                       if (mounted) Navigator.of(context).pop();
                     }
                   },
-                  child: Text(barbero == null ? 'Guardar' : 'Actualizar'),
+                  child: Text(personal == null ? 'Guardar' : 'Actualizar'),
                 ),
                 const SizedBox(height: 20),
               ],
@@ -520,7 +518,7 @@ class _BarberosPageState extends State<BarberosPage> {
     );
   }
 
-  void _deleteBarbero(String id) {
+  void _deletePersonal(String id) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -535,7 +533,8 @@ class _BarberosPageState extends State<BarberosPage> {
           ),
           TextButton(
             onPressed: () async {
-              await _barberosCollection.doc(id).delete();
+              // --- Borramos de la colección 'personal' ---
+              await _personalCollection.doc(id).delete();
               if (mounted) Navigator.of(context).pop();
             },
             child: const Text(
@@ -552,9 +551,9 @@ class _BarberosPageState extends State<BarberosPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: StreamBuilder<QuerySnapshot>(
-        // --- MODIFICADO: AÑADIDO EL FILTRO .where() ---
-        stream: _barberosCollection
-            .where('negocioId', isEqualTo: widget.negocioId) // <-- FILTRO
+        // --- Leemos de la colección 'personal' ---
+        stream: _personalCollection
+            .where('negocioId', isEqualTo: widget.negocioId)
             .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -567,15 +566,16 @@ class _BarberosPageState extends State<BarberosPage> {
             return const Center(child: Text('No hay personal registrado.'));
           }
 
-          final barberos = snapshot.data!.docs
-              .map((doc) => Barbero.fromFirestore(doc))
+          // --- Mapeamos a la clase 'Personal' ---
+          final personalList = snapshot.data!.docs
+              .map((doc) => Personal.fromFirestore(doc))
               .toList();
 
           return ListView.builder(
             padding: const EdgeInsets.all(8.0),
-            itemCount: barberos.length,
+            itemCount: personalList.length,
             itemBuilder: (context, index) {
-              final barbero = barberos[index];
+              final personal = personalList[index];
               return Card(
                 margin: const EdgeInsets.symmetric(
                   vertical: 8.0,
@@ -585,24 +585,28 @@ class _BarberosPageState extends State<BarberosPage> {
                   contentPadding: const EdgeInsets.all(12.0),
                   leading: CircleAvatar(
                     radius: 30,
-                    backgroundImage: NetworkImage(barbero.fotoUrl),
+                    backgroundImage: NetworkImage(personal.fotoUrl),
                     onBackgroundImageError: (exception, stackTrace) {},
                   ),
                   title: Text(
-                    barbero.nombre,
+                    personal.nombre,
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
-                  subtitle: Text(barbero.especialidad),
+                  // --- Mostramos 'servicio' ---
+                  subtitle: Text(personal.servicio),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       IconButton(
                         icon: const Icon(Icons.edit, color: Colors.blueAccent),
-                        onPressed: () => _showBarberoDialog(barbero: barbero),
+                        // --- Pasamos el objeto 'personal' ---
+                        onPressed: () =>
+                            _showPersonalDialog(personal: personal),
                       ),
                       IconButton(
                         icon: const Icon(Icons.delete, color: Colors.redAccent),
-                        onPressed: () => _deleteBarbero(barbero.id!),
+                        // --- Usamos el id de 'personal' ---
+                        onPressed: () => _deletePersonal(personal.id!),
                       ),
                     ],
                   ),
@@ -613,19 +617,20 @@ class _BarberosPageState extends State<BarberosPage> {
         },
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => _showBarberoDialog(),
+        // --- Llamamos a la función renombrada ---
+        onPressed: () => _showPersonalDialog(),
         child: const Icon(Icons.add),
         tooltip: 'Añadir Personal',
       ),
     );
   }
 }
+// --- FIN CAMBIO 3 ---
 
 // =========================================================================
-// === PISO 3: PÁGINA DE DASHBOARD DE VENTAS (MODIFICADO) ===
+// === PISO 3: PÁGINA DE DASHBOARD DE VENTAS (Sin cambios, ya estaba bien) ===
 // =========================================================================
 class VentasDashboardPage extends StatefulWidget {
-  // --- AÑADIDO PARA RECIBIR EL ID ---
   final String negocioId;
   const VentasDashboardPage({super.key, required this.negocioId});
 
@@ -636,7 +641,6 @@ class VentasDashboardPage extends StatefulWidget {
 class _VentasDashboardPageState extends State<VentasDashboardPage> {
   int touchedIndex = -1;
 
-  // --- NUEVA FUNCIÓN PARA AÑADIR VENTAS ---
   void _showVentaDialog() {
     final _servicioController = TextEditingController();
     final _clienteController = TextEditingController();
@@ -701,13 +705,12 @@ class _VentasDashboardPageState extends State<VentasDashboardPage> {
                 ElevatedButton(
                   onPressed: () async {
                     if (_formKey.currentState!.validate()) {
-                      // --- MODIFICADO: AÑADIDO EL 'negocioId' ---
                       final nuevaVenta = Venta(
                         servicio: _servicioController.text,
                         cliente: _clienteController.text,
                         monto: double.parse(_montoController.text),
                         fecha: DateTime.now(),
-                        negocioId: widget.negocioId, // <-- SELLA EL DOCUMENTO
+                        negocioId: widget.negocioId,
                       );
                       await FirebaseFirestore.instance
                           .collection('ventas')
@@ -729,10 +732,9 @@ class _VentasDashboardPageState extends State<VentasDashboardPage> {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<QuerySnapshot>(
-      // --- MODIFICADO: AÑADIDO EL FILTRO .where() ---
       stream: FirebaseFirestore.instance
           .collection('ventas')
-          .where('negocioId', isEqualTo: widget.negocioId) // <-- FILTRO
+          .where('negocioId', isEqualTo: widget.negocioId)
           .snapshots(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
@@ -743,7 +745,6 @@ class _VentasDashboardPageState extends State<VentasDashboardPage> {
         }
         if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
           return Scaffold(
-            // Devuelve un Scaffold para que el FAB sea visible
             body: const Center(child: Text('Aún no hay ventas registradas.')),
             floatingActionButton: FloatingActionButton(
               onPressed: _showVentaDialog,
@@ -925,7 +926,6 @@ class _VentasDashboardPageState extends State<VentasDashboardPage> {
               ],
             ),
           ),
-          // --- BOTÓN PARA AÑADIR VENTA ---
           floatingActionButton: FloatingActionButton(
             onPressed: _showVentaDialog,
             child: const Icon(Icons.add),

@@ -1,19 +1,20 @@
 // lib/features/landing/landing_page.dart
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
-// --- RUTA CORREGIDA ---
-// La ruta correcta es relativa, ya que 'public_booking' está dentro de 'landing'.
-import '../public_booking/booking_page.dart';
+// --- CAMBIO 1: Nos aseguramos que la importación de BookingPage no esté ---
+// (Ya estaba comentada, lo cual es perfecto)
+// import '../public_booking/booking_page.dart';
 
 class LandingPage extends StatefulWidget {
-  const LandingPage({super.key});
+  const LandingPage({super.key}); // Mantenemos key aquí
   @override
   State<LandingPage> createState() => _LandingPageState();
 }
 
 class _LandingPageState extends State<LandingPage> {
-  // Anclas para el scroll (esto está perfecto, no se toca)
+  // Anclas para el scroll
   final _homeKey = GlobalKey();
   final _servicesKey = GlobalKey();
   final _howKey = GlobalKey();
@@ -22,6 +23,10 @@ class _LandingPageState extends State<LandingPage> {
   final _testimonialsKey = GlobalKey();
   final _faqKey = GlobalKey();
   final _adaptKey = GlobalKey();
+
+  // --- CAMBIO 2: Eliminamos la variable _miNegocioId ---
+  // Ya no es necesaria porque el usuario elegirá el negocio.
+  // final String _miNegocioId = const String.fromEnvironment(...);
 
   void _scrollTo(GlobalKey key) {
     final ctx = key.currentContext;
@@ -34,18 +39,30 @@ class _LandingPageState extends State<LandingPage> {
     );
   }
 
-  // Esta función es para el BARBERO que inicia sesión
+  // Navegar al login usando go_router
   void _navigateToAdminLogin() {
-    Navigator.pushNamed(context, '/auth');
+    context.push('/auth');
   }
 
-  // Esta función es para el CLIENTE que quiere agendar
-  void _navigateToBooking() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const BookingPage()),
-    );
+  // --- CAMBIO 3: La función ahora navega a la lista de negocios ---
+  void _navigateToBusinessList() {
+    // Esta ruta la debiste agregar en tu GoRouter
+    context.push('/seleccionar-negocio');
   }
+  // --- FIN CAMBIO 3 ---
+
+  // --- CAMBIO 4: Eliminamos el initState ---
+  // La verificación del ID de negocio ya no es necesaria.
+  /*
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+       ... (toda la lógica de _miNegocioId fue borrada) ...
+    });
+  }
+  */
+  // --- FIN CAMBIO 4 ---
 
   @override
   Widget build(BuildContext context) {
@@ -53,6 +70,7 @@ class _LandingPageState extends State<LandingPage> {
       backgroundColor: const Color(0xFF0D0F1A),
       body: Column(
         children: [
+          // El Navbar ahora usa las funciones de navegación con go_router
           _Navbar(
             onHome: () => _scrollTo(_homeKey),
             onServicios: () => _scrollTo(_servicesKey),
@@ -61,7 +79,7 @@ class _LandingPageState extends State<LandingPage> {
             onFaq: () => _scrollTo(_faqKey),
             onPrecios: () => _scrollTo(_priceKey),
             onAdapt: () => _scrollTo(_adaptKey),
-            onLogin: _navigateToAdminLogin,
+            onLogin: _navigateToAdminLogin, // Navega a /auth
           ),
           Expanded(
             child: SingleChildScrollView(
@@ -69,24 +87,16 @@ class _LandingPageState extends State<LandingPage> {
                 children: [
                   _Section(
                     key: _homeKey,
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 56,
-                      horizontal: 24,
-                    ),
-                    // --- CAMBIO CLAVE: El botón del medio ahora va al login ---
                     child: _HeroWithTabs(onCta: _navigateToAdminLogin),
                   ),
                   _Section(
                     key: _servicesKey,
                     color: const Color(0xFF0F1324),
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 56,
-                      horizontal: 24,
-                    ),
                     child: _ImpulsaTusHorarios(
                       onCardTap: (route) {
-                        // Las tarjetas como "Agenda Online" SÍ deben llevar a la reserva del cliente
-                        _navigateToBooking();
+                        // --- CAMBIO 5: Usamos la nueva función ---
+                        _navigateToBusinessList();
+                        // --- FIN CAMBIO 5 ---
                       },
                     ),
                   ),
@@ -94,52 +104,22 @@ class _LandingPageState extends State<LandingPage> {
                   _Section(
                     key: _howKey,
                     color: const Color(0xFF0F1324),
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 56,
-                      horizontal: 24,
-                    ),
                     child: const _HowItWorks(),
                   ),
-                  _Section(
-                    key: _featKey,
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 56,
-                      horizontal: 24,
-                    ),
-                    child: const _FeaturesBullets(),
-                  ),
+                  _Section(key: _featKey, child: const _FeaturesBullets()),
                   _Section(
                     key: _testimonialsKey,
                     color: const Color(0xFF0F1324),
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 56,
-                      horizontal: 24,
-                    ),
                     child: const _Testimonials(),
                   ),
-                  _Section(
-                    key: _faqKey,
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 56,
-                      horizontal: 24,
-                    ),
-                    child: const _Faqs(),
-                  ),
+                  _Section(key: _faqKey, child: const _Faqs()),
                   _Section(
                     key: _adaptKey,
                     color: const Color(0xFF0F1324),
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 56,
-                      horizontal: 24,
-                    ),
                     child: const _AdaptamosRubros(),
                   ),
                   _Section(
                     key: _priceKey,
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 56,
-                      horizontal: 24,
-                    ),
                     child: _PricingSimple(onChoose: _navigateToAdminLogin),
                   ),
                   _FooterCTA(onCta: _navigateToAdminLogin),
@@ -154,7 +134,7 @@ class _LandingPageState extends State<LandingPage> {
 }
 
 // ======================================================================
-// WIDGETS INTERNOS DE LA PÁGINA
+// WIDGETS INTERNOS DE LA PÁGINA (Sin cambios)
 // ======================================================================
 
 class _Navbar extends StatelessWidget {
@@ -167,7 +147,7 @@ class _Navbar extends StatelessWidget {
   final VoidCallback onAdapt;
   final VoidCallback onLogin;
 
-  // --- CAMBIO: Se elimina onCTA porque ya no existe el botón ---
+  // No necesitamos 'key' aquí si no se pasa explícitamente
   const _Navbar({
     required this.onHome,
     required this.onServicios,
@@ -181,8 +161,10 @@ class _Navbar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Reemplazado withOpacity
+    final navBarColor = const Color(0xFF0D0F1A).withAlpha((255 * 0.9).round());
     return Material(
-      color: const Color(0xFF0D0F1A).withOpacity(0.9),
+      color: navBarColor,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
         decoration: const BoxDecoration(
@@ -282,7 +264,6 @@ class _Navbar extends StatelessWidget {
             _NavBtn('Precios', onPrecios),
             _NavBtn('Rubros', onAdapt),
             const SizedBox(width: 16),
-            // --- CAMBIO CLAVE: Eliminamos el botón "Registrarse" y dejamos solo "Iniciar Sesión" ---
             ElevatedButton(
               onPressed: onLogin,
               child: const Text('Iniciar Sesión'),
@@ -297,7 +278,7 @@ class _Navbar extends StatelessWidget {
 class _NavBtn extends StatelessWidget {
   final String text;
   final VoidCallback onTap;
-  const _NavBtn(this.text, this.onTap);
+  const _NavBtn(this.text, this.onTap); // No key needed
   @override
   Widget build(BuildContext context) {
     return TextButton(
@@ -308,7 +289,7 @@ class _NavBtn extends StatelessWidget {
 }
 
 class _HeroWithTabs extends StatefulWidget {
-  const _HeroWithTabs({required this.onCta});
+  const _HeroWithTabs({required this.onCta}); // No key needed
   final VoidCallback onCta;
 
   @override
@@ -340,7 +321,6 @@ class _HeroWithTabsState extends State<_HeroWithTabs> {
           duration: const Duration(milliseconds: 500),
           curve: Curves.easeInOutCubic,
         );
-        setState(() {});
       }
     });
   }
@@ -354,6 +334,10 @@ class _HeroWithTabsState extends State<_HeroWithTabs> {
 
   @override
   Widget build(BuildContext context) {
+    // Reemplazado withOpacity
+    final textColor = Colors.white.withAlpha((255 * 0.85).round());
+    final overlayColor = Colors.black.withAlpha((255 * 0.2).round());
+
     return Column(
       children: [
         const Text(
@@ -365,10 +349,9 @@ class _HeroWithTabsState extends State<_HeroWithTabs> {
         Text(
           'Organiza citas, cobra sin fricciones y haz crecer tu negocio. Hazlo simple, hazlo Pro.',
           textAlign: TextAlign.center,
-          style: TextStyle(color: Colors.white.withOpacity(0.85)),
+          style: TextStyle(color: textColor),
         ),
         const SizedBox(height: 20),
-        // --- CAMBIO DE NOMBRE ---
         ElevatedButton(
           onPressed: widget.onCta,
           child: const Text('Regístrate ahora ➜'),
@@ -413,6 +396,7 @@ class _HeroWithTabsState extends State<_HeroWithTabs> {
               itemBuilder: (_, i) => Stack(
                 fit: StackFit.expand,
                 children: [
+                  // --- Quitamos el try-catch, errorBuilder es suficiente ---
                   Image.asset(
                     _tabs[i].$3,
                     fit: BoxFit.cover,
@@ -421,13 +405,11 @@ class _HeroWithTabsState extends State<_HeroWithTabs> {
                       child: const Center(child: Text('Imagen no disponible')),
                     ),
                   ),
+                  // -----------------------------------------------------
                   Container(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
-                        colors: [
-                          Colors.transparent,
-                          Colors.black.withOpacity(0.2),
-                        ],
+                        colors: [Colors.transparent, overlayColor],
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
                       ),
@@ -445,10 +427,14 @@ class _HeroWithTabsState extends State<_HeroWithTabs> {
 
 class _ImpulsaTusHorarios extends StatelessWidget {
   final void Function(String route) onCardTap;
-  const _ImpulsaTusHorarios({required this.onCardTap});
+  const _ImpulsaTusHorarios({required this.onCardTap}); // No key needed
 
   @override
   Widget build(BuildContext context) {
+    // Reemplazado withOpacity
+    final textColor = Colors.white.withAlpha((255 * 0.8).round());
+    final overlayColor = Colors.black.withAlpha((255 * 0.45).round());
+
     final items = [
       (
         'Agenda Online',
@@ -476,7 +462,7 @@ class _ImpulsaTusHorarios extends StatelessWidget {
         const SizedBox(height: 8),
         Text(
           'Descubre cómo nuestros módulos aceleran tu agenda.',
-          style: TextStyle(color: Colors.white.withOpacity(0.8)),
+          style: TextStyle(color: textColor),
         ),
         const SizedBox(height: 16),
         LayoutBuilder(
@@ -501,6 +487,7 @@ class _ImpulsaTusHorarios extends StatelessWidget {
                     child: Stack(
                       fit: StackFit.expand,
                       children: [
+                        // --- Quitamos el try-catch ---
                         Image.asset(
                           it.$2,
                           fit: BoxFit.cover,
@@ -512,7 +499,8 @@ class _ImpulsaTusHorarios extends StatelessWidget {
                                 ),
                               ),
                         ),
-                        Container(color: Colors.black.withOpacity(0.45)),
+                        // ---------------------------
+                        Container(color: overlayColor),
                         Padding(
                           padding: const EdgeInsets.all(16),
                           child: Row(
@@ -550,13 +538,12 @@ class _ImpulsaTusHorarios extends StatelessWidget {
 }
 
 class _UniqueValueAndMock extends StatelessWidget {
-  const _UniqueValueAndMock({required this.onCta});
+  const _UniqueValueAndMock({required this.onCta}); // No key needed
   final VoidCallback onCta;
 
   @override
   Widget build(BuildContext context) {
     return _Section(
-      padding: const EdgeInsets.symmetric(vertical: 56, horizontal: 24),
       child: Column(
         children: [
           const Text(
@@ -582,6 +569,7 @@ class _UniqueValueAndMock extends StatelessWidget {
                       aspectRatio: 16 / 9,
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(12),
+                        // --- Quitamos el try-catch ---
                         child: Image.asset(
                           'assets/img/dashboard.jpg',
                           fit: BoxFit.cover,
@@ -593,6 +581,7 @@ class _UniqueValueAndMock extends StatelessWidget {
                                 ),
                               ),
                         ),
+                        // ---------------------------
                       ),
                     ),
                   ),
@@ -602,6 +591,7 @@ class _UniqueValueAndMock extends StatelessWidget {
                       aspectRatio: 9 / 16,
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(24),
+                        // --- Quitamos el try-catch ---
                         child: Image.asset(
                           'assets/img/mobile.jpg',
                           fit: BoxFit.cover,
@@ -613,6 +603,7 @@ class _UniqueValueAndMock extends StatelessWidget {
                                 ),
                               ),
                         ),
+                        // ---------------------------
                       ),
                     ),
                   ),
@@ -627,8 +618,7 @@ class _UniqueValueAndMock extends StatelessWidget {
 }
 
 class _HowItWorks extends StatelessWidget {
-  const _HowItWorks();
-
+  const _HowItWorks(); // No key needed
   @override
   Widget build(BuildContext context) {
     final steps = [
@@ -651,8 +641,12 @@ class _HowItWorks extends StatelessWidget {
           (s) => Padding(
             padding: const EdgeInsets.symmetric(vertical: 8),
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(Icons.check_circle, color: Color(0xFF7C3AED)),
+                const Padding(
+                  padding: EdgeInsets.only(top: 4.0),
+                  child: Icon(Icons.check_circle, color: Color(0xFF7C3AED)),
+                ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Column(
@@ -677,8 +671,7 @@ class _HowItWorks extends StatelessWidget {
 }
 
 class _FeaturesBullets extends StatelessWidget {
-  const _FeaturesBullets();
-
+  const _FeaturesBullets(); // No key needed
   @override
   Widget build(BuildContext context) {
     Widget col(String title, List<String> items) => Expanded(
@@ -703,21 +696,45 @@ class _FeaturesBullets extends StatelessWidget {
           style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800),
         ),
         const SizedBox(height: 16),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            col('CAPTA', const [
-              'Agenda online sin login',
-              'Sitio de reservas por sucursal',
-              'Recordatorios WhatsApp / Email',
-            ]),
-            const SizedBox(width: 24),
-            col('GESTIONA', const [
-              'Control de inventario vinculado a servicios',
-              'Reportes y KPIs de ventas',
-              'Usuarios y permisos por rol',
-            ]),
-          ],
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final bool useRow = constraints.maxWidth > 600;
+            if (useRow) {
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  col('CAPTA', const [
+                    'Agenda online sin login',
+                    'Sitio de reservas por sucursal',
+                    'Recordatorios WhatsApp / Email',
+                  ]),
+                  const SizedBox(width: 24),
+                  col('GESTIONA', const [
+                    'Control de inventario vinculado a servicios',
+                    'Reportes y KPIs de ventas',
+                    'Usuarios y permisos por rol',
+                  ]),
+                ],
+              );
+            } else {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  col('CAPTA', const [
+                    'Agenda online sin login',
+                    'Sitio de reservas por sucursal',
+                    'Recordatorios WhatsApp / Email',
+                  ]),
+                  const SizedBox(height: 24),
+                  col('GESTIONA', const [
+                    'Control de inventario vinculado a servicios',
+                    'Reportes y KPIs de ventas',
+                    'Usuarios y permisos por rol',
+                  ]),
+                ],
+              );
+            }
+          },
         ),
       ],
     );
@@ -726,14 +743,18 @@ class _FeaturesBullets extends StatelessWidget {
 
 class _Bullet extends StatelessWidget {
   final String text;
-  const _Bullet({required this.text});
+  const _Bullet({required this.text}); // No key needed
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.arrow_right, color: Color(0xFF7C3AED)),
+          const Padding(
+            padding: EdgeInsets.only(top: 4.0),
+            child: Icon(Icons.arrow_right, color: Color(0xFF7C3AED), size: 18),
+          ),
           const SizedBox(width: 4),
           Expanded(child: Text(text)),
         ],
@@ -743,8 +764,7 @@ class _Bullet extends StatelessWidget {
 }
 
 class _Testimonials extends StatelessWidget {
-  const _Testimonials();
-
+  const _Testimonials(); // No key needed
   @override
   Widget build(BuildContext context) {
     final items = [
@@ -760,31 +780,38 @@ class _Testimonials extends StatelessWidget {
           style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800),
         ),
         const SizedBox(height: 16),
-        Wrap(
-          spacing: 16,
-          runSpacing: 16,
-          children: items
-              .map(
-                (t) => SizedBox(
-                  width: 340,
-                  child: Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        children: [
-                          Text(t.$1, textAlign: TextAlign.center),
-                          const SizedBox(height: 8),
-                          Text(
-                            t.$2,
-                            style: const TextStyle(color: Colors.white70),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final double cardWidth = 340;
+            // No es necesario calcular crossAxisCount aquí, Wrap lo hace solo
+            return Wrap(
+              spacing: 16,
+              runSpacing: 16,
+              alignment: WrapAlignment.center,
+              children: items
+                  .map(
+                    (t) => SizedBox(
+                      width: cardWidth,
+                      child: Card(
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            children: [
+                              Text(t.$1, textAlign: TextAlign.center),
+                              const SizedBox(height: 8),
+                              Text(
+                                t.$2,
+                                style: const TextStyle(color: Colors.white70),
+                              ),
+                            ],
                           ),
-                        ],
+                        ),
                       ),
                     ),
-                  ),
-                ),
-              )
-              .toList(),
+                  )
+                  .toList(),
+            );
+          },
         ),
       ],
     );
@@ -792,8 +819,7 @@ class _Testimonials extends StatelessWidget {
 }
 
 class _Faqs extends StatelessWidget {
-  const _Faqs();
-
+  const _Faqs(); // No key needed
   @override
   Widget build(BuildContext context) {
     final faqs = [
@@ -814,7 +840,6 @@ class _Faqs extends StatelessWidget {
         'Sí, el panel muestra KPIs y comisiones por staff.',
       ),
     ];
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -822,19 +847,18 @@ class _Faqs extends StatelessWidget {
           'Preguntas frecuentes',
           style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 16),
         ...faqs.map(
           (f) => Card(
+            margin: const EdgeInsets.symmetric(vertical: 6.0),
             child: ExpansionTile(
-              title: Text(f.$1),
+              title: Text(
+                f.$1,
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+              childrenPadding: const EdgeInsets.all(16.0).copyWith(top: 0),
               children: [
-                Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(f.$2),
-                  ),
-                ),
+                Align(alignment: Alignment.centerLeft, child: Text(f.$2)),
               ],
             ),
           ),
@@ -845,8 +869,7 @@ class _Faqs extends StatelessWidget {
 }
 
 class _AdaptamosRubros extends StatelessWidget {
-  const _AdaptamosRubros();
-
+  const _AdaptamosRubros(); // No key needed
   @override
   Widget build(BuildContext context) {
     final rubros = [
@@ -870,7 +893,7 @@ class _AdaptamosRubros extends StatelessWidget {
           'Nos adaptamos a tu negocio',
           style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 16),
         _AutoScrollChips(items: rubros),
       ],
     );
@@ -879,8 +902,7 @@ class _AdaptamosRubros extends StatelessWidget {
 
 class _AutoScrollChips extends StatefulWidget {
   final List<String> items;
-  const _AutoScrollChips({required this.items});
-
+  const _AutoScrollChips({required this.items}); // No key needed
   @override
   State<_AutoScrollChips> createState() => _AutoScrollChipsState();
 }
@@ -892,11 +914,42 @@ class _AutoScrollChipsState extends State<_AutoScrollChips> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _startAutoScroll();
+    });
+  }
+
+  void _startAutoScroll() {
+    _timer?.cancel();
     _timer = Timer.periodic(const Duration(milliseconds: 35), (_) {
-      if (!_sc.hasClients || !mounted) return;
+      if (!_sc.hasClients || !mounted) {
+        _timer?.cancel();
+        return;
+      }
       final max = _sc.position.maxScrollExtent;
-      final next = _sc.offset + 1.5;
-      _sc.jumpTo(next >= max ? 0 : next);
+      final current = _sc.offset;
+      final next = current + 1.0;
+
+      if (max == 0) return; // Evita error si no hay scroll
+
+      if (next >= max) {
+        _timer?.cancel();
+        Future.delayed(const Duration(seconds: 2), () {
+          if (mounted && _sc.hasClients) {
+            _sc
+                .animateTo(
+                  0,
+                  duration: const Duration(milliseconds: 700),
+                  curve: Curves.easeInOut,
+                )
+                .then((_) {
+                  if (mounted) _startAutoScroll();
+                });
+          }
+        });
+      } else {
+        _sc.jumpTo(next);
+      }
     });
   }
 
@@ -909,7 +962,9 @@ class _AutoScrollChipsState extends State<_AutoScrollChips> {
 
   @override
   Widget build(BuildContext context) {
-    final data = [...widget.items, ...widget.items];
+    final data = widget.items;
+    if (data.isEmpty)
+      return const SizedBox.shrink(); // No mostrar nada si no hay items
     return SizedBox(
       height: 84,
       child: ListView.separated(
@@ -918,13 +973,17 @@ class _AutoScrollChipsState extends State<_AutoScrollChips> {
         itemCount: data.length,
         separatorBuilder: (_, __) => const SizedBox(width: 12),
         itemBuilder: (_, i) => Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             CircleAvatar(
               radius: 26,
               backgroundColor: const Color(0xFF1F2340),
               child: Text(
-                data[i][0],
-                style: const TextStyle(fontWeight: FontWeight.w800),
+                data[i].isNotEmpty ? data[i][0].toUpperCase() : '?',
+                style: const TextStyle(
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white,
+                ),
               ),
             ),
             const SizedBox(height: 6),
@@ -937,7 +996,7 @@ class _AutoScrollChipsState extends State<_AutoScrollChips> {
 }
 
 class _PricingSimple extends StatelessWidget {
-  const _PricingSimple({required this.onChoose});
+  const _PricingSimple({required this.onChoose}); // No key needed
   final VoidCallback onChoose;
 
   @override
@@ -948,7 +1007,7 @@ class _PricingSimple extends StatelessWidget {
           'Precios',
           style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 16),
         _PriceCard(
           title: 'Gratis',
           price: '\$0',
@@ -980,14 +1039,17 @@ class _PriceCard extends StatelessWidget {
     required this.price,
     required this.features,
     required this.onChoose,
-  });
+  }); // No key needed
 
   @override
   Widget build(BuildContext context) {
     return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       child: Padding(
         padding: const EdgeInsets.all(18),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Expanded(
               child: Column(
@@ -1008,10 +1070,10 @@ class _PriceCard extends StatelessWidget {
                       fontSize: 24,
                     ),
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 10),
                   ...features.map(
                     (f) => Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 2),
+                      padding: const EdgeInsets.symmetric(vertical: 3),
                       child: Row(
                         children: [
                           const Icon(
@@ -1019,8 +1081,8 @@ class _PriceCard extends StatelessWidget {
                             size: 18,
                             color: Color(0xFF7C3AED),
                           ),
-                          const SizedBox(width: 6),
-                          Text(f),
+                          const SizedBox(width: 8),
+                          Expanded(child: Text(f)),
                         ],
                       ),
                     ),
@@ -1028,6 +1090,7 @@ class _PriceCard extends StatelessWidget {
                 ],
               ),
             ),
+            const SizedBox(width: 16),
             ElevatedButton(
               onPressed: onChoose,
               child: const Text('Elegir plan'),
@@ -1040,7 +1103,7 @@ class _PriceCard extends StatelessWidget {
 }
 
 class _FooterCTA extends StatelessWidget {
-  const _FooterCTA({required this.onCta});
+  const _FooterCTA({required this.onCta}); // No key needed
   final VoidCallback onCta;
 
   @override
@@ -1062,38 +1125,61 @@ class _FooterCTA extends StatelessWidget {
               const Text(
                 'Crea tu cuenta e inicia',
                 style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800),
+                textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 16),
               ElevatedButton(
                 onPressed: onCta,
                 child: const Text('Crea tu cuenta YA'),
               ),
-              const SizedBox(height: 28),
-              Wrap(
-                spacing: 32,
-                runSpacing: 12,
-                alignment: WrapAlignment.spaceBetween,
-                children: [
-                  _FooterCol(
-                    title: 'TuEmpresa',
-                    lines: ['© $year TuEmpresa Inc.'],
-                    small: true,
-                  ),
-                  const _FooterCol(
-                    title: 'Contacto',
-                    lines: [
-                      'Chile',
-                      'contacto@tuempresa.com',
-                      'Av. Dirección 123, Santiago',
-                      '+56 2 XXXX XXXX',
-                      'Instagram · Facebook · X · LinkedIn',
-                    ],
-                  ),
-                  const _FooterCol(
-                    title: 'Legal',
-                    lines: ['Política de privacidad', 'Términos y condiciones'],
-                  ),
-                ],
+              const SizedBox(height: 36),
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final bool useRow = constraints.maxWidth > 700;
+                  final List<Widget> footerColumns = [
+                    // Definimos las columnas una vez
+                    _FooterCol(
+                      title: 'TuEmpresa',
+                      lines: ['© $year TuEmpresa Inc.'],
+                      small: true,
+                    ),
+                    const _FooterCol(
+                      title: 'Contacto',
+                      lines: [
+                        'Chile',
+                        'contacto@tuempresa.com',
+                        'Av. Dirección 123, Santiago',
+                        '+56 2 XXXX XXXX',
+                        'Instagram · Facebook · X · LinkedIn',
+                      ],
+                    ),
+                    const _FooterCol(
+                      title: 'Legal',
+                      lines: [
+                        'Política de privacidad',
+                        'Términos y condiciones',
+                      ],
+                    ),
+                  ];
+                  if (useRow) {
+                    return Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: footerColumns,
+                    );
+                  } else {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        footerColumns[0],
+                        const SizedBox(height: 24),
+                        footerColumns[1],
+                        const SizedBox(height: 24),
+                        footerColumns[2],
+                      ],
+                    );
+                  }
+                },
               ),
             ],
           ),
@@ -1111,12 +1197,14 @@ class _FooterCol extends StatelessWidget {
     required this.title,
     required this.lines,
     this.small = false,
-  });
+  }); // No key needed
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: 280,
+    // Reemplazado withOpacity
+    final textColor = Colors.white.withAlpha((255 * 0.85).round());
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 280),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1126,11 +1214,11 @@ class _FooterCol extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           ...lines.map(
-            (l) => Text(
-              l,
-              style: TextStyle(
-                color: Colors.white.withOpacity(0.85),
-                fontSize: small ? 12 : 14,
+            (l) => Padding(
+              padding: const EdgeInsets.only(bottom: 4.0),
+              child: Text(
+                l,
+                style: TextStyle(color: textColor, fontSize: small ? 12 : 14),
               ),
             ),
           ),
@@ -1143,8 +1231,10 @@ class _FooterCol extends StatelessWidget {
 class _HoverMenuButton extends StatefulWidget {
   final String label;
   final Widget Function(VoidCallback close) menuBuilder;
-  const _HoverMenuButton({required this.label, required this.menuBuilder});
-
+  const _HoverMenuButton({
+    required this.label,
+    required this.menuBuilder,
+  }); // No key needed
   @override
   State<_HoverMenuButton> createState() => _HoverMenuButtonState();
 }
@@ -1154,8 +1244,11 @@ class _HoverMenuButtonState extends State<_HoverMenuButton> {
   OverlayEntry? _entry;
   bool _hoveringBtn = false;
   bool _hoveringMenu = false;
+  Timer? _closeTimer;
 
   void _show() {
+    _closeTimer?.cancel();
+    if (_entry != null) return;
     if (!mounted) return;
     final render = _key.currentContext?.findRenderObject() as RenderBox?;
     if (render == null) return;
@@ -1164,17 +1257,20 @@ class _HoverMenuButtonState extends State<_HoverMenuButton> {
 
     _entry = OverlayEntry(
       builder: (_) => Positioned(
-        left: offset.dx,
+        left: offset.dx.clamp(0, MediaQuery.of(context).size.width - 300),
         top: offset.dy + size.height + 6,
         child: MouseRegion(
-          onEnter: (_) => setState(() => _hoveringMenu = true),
+          onEnter: (_) {
+            _hoveringMenu = true;
+            _closeTimer?.cancel();
+          },
           onExit: (_) {
             _hoveringMenu = false;
             _maybeClose();
           },
           child: Material(
             color: Colors.transparent,
-            child: widget.menuBuilder(_close),
+            child: widget.menuBuilder(_closeNow),
           ),
         ),
       ),
@@ -1182,14 +1278,37 @@ class _HoverMenuButtonState extends State<_HoverMenuButton> {
     Overlay.of(context).insert(_entry!);
   }
 
-  void _close() {
+  void _closeNow() {
+    _closeTimer?.cancel();
     _entry?.remove();
     _entry = null;
+    _hoveringBtn = false;
+    _hoveringMenu = false;
   }
 
-  Future<void> _maybeClose() async {
-    await Future.delayed(const Duration(milliseconds: 120));
-    if (!_hoveringBtn && !_hoveringMenu) _close();
+  void _maybeClose() {
+    _closeTimer?.cancel();
+    _closeTimer = Timer(const Duration(milliseconds: 150), () {
+      if (!_hoveringBtn && !_hoveringMenu && mounted) _closeNow();
+    });
+  }
+
+  @override
+  void dispose() {
+    _closeTimer?.cancel();
+    // Ensure overlay is removed on dispose
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      try {
+        // Add try-catch for safety during dispose
+        if (_entry != null) {
+          _entry?.remove();
+          _entry = null;
+        }
+      } catch (e) {
+        print("Error removing overlay on dispose: $e");
+      }
+    });
+    super.dispose();
   }
 
   @override
@@ -1207,9 +1326,13 @@ class _HoverMenuButtonState extends State<_HoverMenuButton> {
         key: _key,
         child: TextButton(
           onPressed: () {},
-          child: Text(
-            widget.label,
-            style: const TextStyle(color: Colors.white),
+          style: TextButton.styleFrom(foregroundColor: Colors.white),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(widget.label),
+              const Icon(Icons.arrow_drop_down, size: 18),
+            ],
           ),
         ),
       ),
@@ -1219,7 +1342,7 @@ class _HoverMenuButtonState extends State<_HoverMenuButton> {
 
 class _MenuCard extends StatelessWidget {
   final List<_MenuColumn> columns;
-  const _MenuCard({required this.columns});
+  const _MenuCard({required this.columns}); // No key needed
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -1230,25 +1353,27 @@ class _MenuCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(10),
         boxShadow: const [
           BoxShadow(
-            color: Colors.black26,
-            blurRadius: 12,
+            color: Colors.black38,
+            blurRadius: 16,
             offset: Offset(0, 8),
           ),
         ],
-        border: Border.all(color: const Color(0x22FFFFFF)),
+        border: Border.all(color: const Color(0x33FFFFFF)),
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: columns
-            .map(
-              (c) => Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  child: c,
+      child: IntrinsicWidth(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: columns
+              .map(
+                (c) => Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: c,
+                  ),
                 ),
-              ),
-            )
-            .toList(),
+              )
+              .toList(),
+        ),
       ),
     );
   }
@@ -1257,22 +1382,28 @@ class _MenuCard extends StatelessWidget {
 class _MenuColumn extends StatelessWidget {
   final String title;
   final List<_MenuItem> items;
-  const _MenuColumn({required this.title, required this.items});
+  const _MenuColumn({
+    required this.title,
+    required this.items,
+  }); // No key needed
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Text(
-          title,
-          style: const TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 1,
-            color: Colors.white70,
+        Padding(
+          padding: const EdgeInsets.only(bottom: 12.0, left: 6.0),
+          child: Text(
+            title,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1,
+              color: Colors.white70,
+            ),
           ),
         ),
-        const SizedBox(height: 12),
         ...items,
       ],
     );
@@ -1287,21 +1418,24 @@ class _MenuItem extends StatelessWidget {
     required this.icon,
     required this.text,
     required this.onTap,
-  });
+  }); // No key needed
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      hoverColor: Colors.white10,
-      borderRadius: BorderRadius.circular(8),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
-        child: Row(
-          children: [
-            Icon(icon, size: 18, color: const Color(0xFF9AA3B2)),
-            const SizedBox(width: 8),
-            Expanded(child: Text(text, style: const TextStyle(fontSize: 14))),
-          ],
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        hoverColor: Colors.white12,
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+          child: Row(
+            children: [
+              Icon(icon, size: 18, color: const Color(0xFF9AA3B2)),
+              const SizedBox(width: 12),
+              Expanded(child: Text(text, style: const TextStyle(fontSize: 14))),
+            ],
+          ),
         ),
       ),
     );
@@ -1313,10 +1447,11 @@ class _Section extends StatelessWidget {
   final EdgeInsetsGeometry padding;
   final Color? color;
 
+  // Key is optional, so we use super.key
   const _Section({
     super.key,
     required this.child,
-    this.padding = const EdgeInsets.symmetric(vertical: 64, horizontal: 24),
+    this.padding = const EdgeInsets.symmetric(vertical: 56, horizontal: 24),
     this.color,
   });
 
