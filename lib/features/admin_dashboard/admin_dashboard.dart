@@ -5,7 +5,7 @@ import 'package:table_calendar/table_calendar.dart';
 import 'package:fl_chart/fl_chart.dart'; // Paquete de gráficos
 import '../../services/auth_service.dart';
 
-// --- Modelo para las Citas (Sin cambios, ya estaba bien) ---
+// --- Modelo Cita (Sin cambios) ---
 class Cita {
   final String id;
   final String nombreCliente;
@@ -33,7 +33,7 @@ class Cita {
   }
 }
 
-// --- CAMBIO 1: Modelo para el Personal (Antes 'Barbero') ---
+// --- Modelo Personal (Sin cambios) ---
 class Personal {
   final String? id;
   final String nombre;
@@ -69,9 +69,8 @@ class Personal {
     };
   }
 }
-// --- FIN CAMBIO 1 ---
 
-// --- Modelo para las Ventas (Sin cambios, ya estaba bien) ---
+// --- Modelo Venta (Sin cambios) ---
 class Venta {
   final String servicio;
   final String cliente;
@@ -109,7 +108,7 @@ class Venta {
 }
 
 // =========================================================================
-// === ESTRUCTURA PRINCIPAL DEL DASHBOARD ===
+// === ESTRUCTURA PRINCIPAL DEL DASHBOARD (MODIFICADA) ===
 // =========================================================================
 class AdminDashboardPage extends StatefulWidget {
   const AdminDashboardPage({super.key});
@@ -122,12 +121,57 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
   int _selectedIndex = 0;
   final PageController _pageController = PageController();
 
+  // --- NUEVAS VARIABLES DE ESTADO ---
+  final AuthService _auth = AuthService();
+  late Future<String?> _negocioIdFuture;
+  String? _userId; // El ID de autenticación (ownerId)
+
   final List<String> _pageTitles = [
     'Calendario de Clientes',
-    'Gestión de Personal', // <-- El título ya era genérico, ¡perfecto!
+    'Gestión de Personal',
     'Dashboard',
     'Configuración',
   ];
+
+  // --- NUEVO: INICIALIZAMOS LA BÚSQUEDA DEL ID DEL NEGOCIO ---
+  @override
+  void initState() {
+    super.initState();
+    _userId = _auth.currentUser?.uid;
+    if (_userId != null) {
+      _negocioIdFuture = _getNegocioId(_userId!);
+    } else {
+      _negocioIdFuture = Future.value(null);
+    }
+  }
+
+  // --- NUEVA FUNCIÓN ---
+  // Esta función busca en la colección 'negocios' el documento
+  // que le pertenece al 'ownerId' (que es nuestro _userId)
+  // y devuelve el ID de ESE DOCUMENTO.
+  Future<String?> _getNegocioId(String ownerId) async {
+    try {
+      final querySnapshot = await FirebaseFirestore.instance
+          .collection('negocios')
+          .where('ownerId', isEqualTo: ownerId)
+          .limit(1) // Solo debería haber uno
+          .get();
+
+      if (querySnapshot.docs.isNotEmpty) {
+        // ¡Este es el ID que necesitamos! El ID del documento.
+        return querySnapshot.docs.first.id;
+      } else {
+        // El usuario está logueado pero no tiene un negocio asignado
+        print("Error: No se encontró un negocio para el ownerId: $ownerId");
+        return null;
+      }
+    } catch (e) {
+      print("==== ERROR AL BUSCAR NEGOCIO ID ====");
+      print(e);
+      print("====================================");
+      return null;
+    }
+  }
 
   void _onItemTapped(int index) {
     setState(() => _selectedIndex = index);
@@ -137,10 +181,9 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
 
   @override
   Widget build(BuildContext context) {
-    final auth = AuthService();
-    final String? userId = auth.currentUser?.uid;
-
-    if (userId == null) {
+    // Si el _userId (auth id) es nulo, mostramos error de "no logueado".
+    // (Esta lógica ya la tenías y estaba bien).
+    if (_userId == null) {
       return Scaffold(
         body: Center(
           child: Column(
@@ -150,7 +193,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
               const SizedBox(height: 20),
               ElevatedButton(
                 onPressed: () async {
-                  await auth.signOut();
+                  await _auth.signOut();
                   if (context.mounted) {
                     Navigator.of(
                       context,
@@ -165,83 +208,124 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
       );
     }
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(_pageTitles[_selectedIndex]),
-        actions: [
-          IconButton(
-            tooltip: 'Cerrar sesión',
-            icon: const Icon(Icons.logout),
-            onPressed: () async {
-              await auth.signOut();
-              if (context.mounted) {
-                Navigator.of(
-                  context,
-                ).pushNamedAndRemoveUntil('/wrapper', (route) => false);
-              }
-            },
-          ),
-        ],
-      ),
-      drawer: Drawer(
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            DrawerHeader(
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primary.withOpacity(0.8),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  CircleAvatar(
-                    radius: 30,
-                    backgroundColor: Colors.white,
-                    child: Text(
-                      auth.currentUser?.email?.substring(0, 1).toUpperCase() ??
-                          'U',
-                      style: const TextStyle(
-                        fontSize: 24,
-                        color: Colors.black87,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  const Text(
-                    'Administrador',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                  Text(
-                    auth.currentUser?.email ?? 'Usuario desconocido',
-                    style: const TextStyle(color: Colors.white70),
-                  ),
-                ],
+    // --- CAMBIO CLAVE: Usamos un FutureBuilder ---
+    // Ahora, esperamos a que la función _getNegocioId termine.
+    return FutureBuilder<String?>(
+      future: _negocioIdFuture,
+      builder: (context, snapshot) {
+        // --- CASO 1: Esperando ---
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        // --- CASO 2: Error o sin datos ---
+        // Si no se pudo encontrar el negocioId (null) o hubo un error
+        if (snapshot.hasError || !snapshot.hasData || snapshot.data == null) {
+          return Scaffold(
+            appBar: AppBar(title: const Text('Error')),
+            body: const Center(
+              child: Padding(
+                padding: EdgeInsets.all(16.0),
+                child: Text(
+                  'Error: No se pudo encontrar un negocio asociado a esta cuenta.',
+                  textAlign: TextAlign.center,
+                ),
               ),
             ),
-            _buildDrawerItem(Icons.calendar_month, 'Calendario de Clientes', 0),
-            _buildDrawerItem(Icons.content_cut, 'Gestión de Personal', 1),
-            _buildDrawerItem(Icons.dashboard, 'Dashboard', 2),
-            const Divider(),
-            _buildDrawerItem(Icons.settings, 'Configuración', 3),
-          ],
-        ),
-      ),
-      body: PageView(
-        controller: _pageController,
-        onPageChanged: (index) => setState(() => _selectedIndex = index),
-        children: [
-          AgendaPage(negocioId: userId),
-          // --- CAMBIO 2: Llamamos a la página 'PersonalPage' ---
-          PersonalPage(negocioId: userId), // <-- ANTES 'BarberosPage'
-          // --- FIN CAMBIO 2 ---
-          VentasDashboardPage(negocioId: userId),
-          const ConfiguracionPage(),
-        ],
-      ),
+          );
+        }
+
+        // --- CASO 3: ¡Éxito! ---
+        // Tenemos el ID del negocio (el ID del documento)
+        final String negocioId = snapshot.data!;
+
+        // Ahora sí construimos la página principal,
+        // porque ya tenemos el 'negocioId' correcto.
+        return Scaffold(
+          appBar: AppBar(
+            title: Text(_pageTitles[_selectedIndex]),
+            actions: [
+              IconButton(
+                tooltip: 'Cerrar sesión',
+                icon: const Icon(Icons.logout),
+                onPressed: () async {
+                  await _auth.signOut();
+                  if (context.mounted) {
+                    Navigator.of(
+                      context,
+                    ).pushNamedAndRemoveUntil('/wrapper', (route) => false);
+                  }
+                },
+              ),
+            ],
+          ),
+          drawer: Drawer(
+            child: ListView(
+              padding: EdgeInsets.zero,
+              children: [
+                DrawerHeader(
+                  decoration: BoxDecoration(
+                    color:
+                        Theme.of(context).colorScheme.primary.withOpacity(0.8),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      CircleAvatar(
+                        radius: 30,
+                        backgroundColor: Colors.white,
+                        child: Text(
+                          _auth.currentUser?.email
+                                  ?.substring(0, 1)
+                                  .toUpperCase() ??
+                              'U',
+                          style: const TextStyle(
+                            fontSize: 24,
+                            color: Colors.black87,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      const Text(
+                        'Administrador',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      Text(
+                        _auth.currentUser?.email ?? 'Usuario desconocido',
+                        style: const TextStyle(color: Colors.white70),
+                      ),
+                    ],
+                  ),
+                ),
+                _buildDrawerItem(
+                    Icons.calendar_month, 'Calendario de Clientes', 0),
+                _buildDrawerItem(Icons.content_cut, 'Gestión de Personal', 1),
+                _buildDrawerItem(Icons.dashboard, 'Dashboard', 2),
+                const Divider(),
+                _buildDrawerItem(Icons.settings, 'Configuración', 3),
+              ],
+            ),
+          ),
+          body: PageView(
+            controller: _pageController,
+            onPageChanged: (index) => setState(() => _selectedIndex = index),
+            children: [
+              // --- ¡AQUÍ ESTÁ LA MAGIA! ---
+              // Ahora pasamos el ID del documento del negocio, no el ID del usuario.
+              AgendaPage(negocioId: negocioId),
+              PersonalPage(negocioId: negocioId),
+              VentasDashboardPage(negocioId: negocioId),
+              const ConfiguracionPage(),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -270,7 +354,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
 }
 
 // =========================================================================
-// === PISO 1: PÁGINA DE AGENDA (Sin cambios, ya estaba bien) ===
+// === PISO 1: PÁGINA DE AGENDA (Sin cambios) ===
 // =========================================================================
 class AgendaPage extends StatefulWidget {
   final String negocioId;
@@ -318,6 +402,9 @@ class _AgendaPageState extends State<AgendaPage> {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<QuerySnapshot>(
+      // Esta consulta AHORA funcionará, porque widget.negocioId
+      // es el ID del documento (ej: "2c55QdM..."), que es
+      // lo que tienes en la colección 'citas'.
       stream: FirebaseFirestore.instance
           .collection('citas')
           .where('negocioId', isEqualTo: widget.negocioId)
@@ -327,9 +414,19 @@ class _AgendaPageState extends State<AgendaPage> {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }
+        
+        // Este es el bloque de depuración que agregaste, ¡está perfecto!
         if (snapshot.hasError) {
-          return const Center(child: Text('Error al cargar las citas.'));
+          print("==== ERROR StreamBuilder Citas ===="); 
+          print("Error: ${snapshot.error}");
+          print("Negocio ID usado en where: ${widget.negocioId}"); // Ahora imprimirá el ID correcto
+          print("Stack trace: ${snapshot.stackTrace}");
+          print("===================================");
+          return const Center(
+              child: Text(
+                  'Error al cargar las citas.\nRevisa la consola de debug para detalles.'));
         }
+        
         if (snapshot.hasData) {
           _citas = {};
           for (var doc in snapshot.data!.docs) {
@@ -409,7 +506,7 @@ class _AgendaPageState extends State<AgendaPage> {
 }
 
 // =========================================================================
-// === CAMBIO 3: PÁGINA DE GESTIÓN DE PERSONAL (Antes 'BarberosPage') ===
+// === PÁGINA DE GESTIÓN DE PERSONAL (Sin cambios) ===
 // =========================================================================
 class PersonalPage extends StatefulWidget {
   final String negocioId;
@@ -420,13 +517,11 @@ class PersonalPage extends StatefulWidget {
 }
 
 class _PersonalPageState extends State<PersonalPage> {
-  // --- APUNTAMOS A LA COLECCIÓN 'personal' ---
-  final CollectionReference _personalCollection = FirebaseFirestore.instance
-      .collection('personal');
+  final CollectionReference _personalCollection =
+      FirebaseFirestore.instance.collection('personal');
 
   void _showPersonalDialog({Personal? personal}) {
     final _nombreController = TextEditingController(text: personal?.nombre);
-    // --- Usamos 'servicio' ---
     final _servicioController = TextEditingController(text: personal?.servicio);
     final _fotoUrlController = TextEditingController(text: personal?.fotoUrl);
     final _formKey = GlobalKey<FormState>();
@@ -463,14 +558,13 @@ class _PersonalPageState extends State<PersonalPage> {
                       : null,
                 ),
                 const SizedBox(height: 10),
-                // --- Usamos 'servicio' ---
                 TextFormField(
                   controller: _servicioController,
                   decoration: const InputDecoration(
                     labelText: 'Servicio',
-                  ), // <-- Texto UI
+                  ),
                   validator: (value) => (value == null || value.isEmpty)
-                      ? 'El servicio es obligatorio' // <-- Texto UI
+                      ? 'El servicio es obligatorio'
                       : null,
                 ),
                 const SizedBox(height: 10),
@@ -487,16 +581,13 @@ class _PersonalPageState extends State<PersonalPage> {
                 ElevatedButton(
                   onPressed: () async {
                     if (_formKey.currentState!.validate()) {
-                      // --- Creamos un objeto 'Personal' ---
                       final newPersonal = Personal(
                         id: personal?.id,
                         nombre: _nombreController.text,
-                        servicio:
-                            _servicioController.text, // <-- Usamos servicio
+                        servicio: _servicioController.text,
                         fotoUrl: _fotoUrlController.text,
-                        negocioId: widget.negocioId,
+                        negocioId: widget.negocioId, // <-- Esto ahora funcionará
                       );
-                      // --- Guardamos en la colección 'personal' ---
                       if (personal == null) {
                         await _personalCollection.add(newPersonal.toMap());
                       } else {
@@ -533,7 +624,6 @@ class _PersonalPageState extends State<PersonalPage> {
           ),
           TextButton(
             onPressed: () async {
-              // --- Borramos de la colección 'personal' ---
               await _personalCollection.doc(id).delete();
               if (mounted) Navigator.of(context).pop();
             },
@@ -551,9 +641,8 @@ class _PersonalPageState extends State<PersonalPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: StreamBuilder<QuerySnapshot>(
-        // --- Leemos de la colección 'personal' ---
         stream: _personalCollection
-            .where('negocioId', isEqualTo: widget.negocioId)
+            .where('negocioId', isEqualTo: widget.negocioId) // <-- Esto ahora funcionará
             .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -565,8 +654,6 @@ class _PersonalPageState extends State<PersonalPage> {
           if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
             return const Center(child: Text('No hay personal registrado.'));
           }
-
-          // --- Mapeamos a la clase 'Personal' ---
           final personalList = snapshot.data!.docs
               .map((doc) => Personal.fromFirestore(doc))
               .toList();
@@ -592,20 +679,17 @@ class _PersonalPageState extends State<PersonalPage> {
                     personal.nombre,
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
-                  // --- Mostramos 'servicio' ---
                   subtitle: Text(personal.servicio),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       IconButton(
                         icon: const Icon(Icons.edit, color: Colors.blueAccent),
-                        // --- Pasamos el objeto 'personal' ---
                         onPressed: () =>
                             _showPersonalDialog(personal: personal),
                       ),
                       IconButton(
                         icon: const Icon(Icons.delete, color: Colors.redAccent),
-                        // --- Usamos el id de 'personal' ---
                         onPressed: () => _deletePersonal(personal.id!),
                       ),
                     ],
@@ -617,7 +701,6 @@ class _PersonalPageState extends State<PersonalPage> {
         },
       ),
       floatingActionButton: FloatingActionButton(
-        // --- Llamamos a la función renombrada ---
         onPressed: () => _showPersonalDialog(),
         child: const Icon(Icons.add),
         tooltip: 'Añadir Personal',
@@ -625,10 +708,9 @@ class _PersonalPageState extends State<PersonalPage> {
     );
   }
 }
-// --- FIN CAMBIO 3 ---
 
 // =========================================================================
-// === PISO 3: PÁGINA DE DASHBOARD DE VENTAS (Sin cambios, ya estaba bien) ===
+// === PÁGINA DE DASHBOARD DE VENTAS (Sin cambios) ===
 // =========================================================================
 class VentasDashboardPage extends StatefulWidget {
   final String negocioId;
@@ -710,7 +792,7 @@ class _VentasDashboardPageState extends State<VentasDashboardPage> {
                         cliente: _clienteController.text,
                         monto: double.parse(_montoController.text),
                         fecha: DateTime.now(),
-                        negocioId: widget.negocioId,
+                        negocioId: widget.negocioId, // <-- Esto ahora funcionará
                       );
                       await FirebaseFirestore.instance
                           .collection('ventas')
@@ -734,7 +816,7 @@ class _VentasDashboardPageState extends State<VentasDashboardPage> {
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
           .collection('ventas')
-          .where('negocioId', isEqualTo: widget.negocioId)
+          .where('negocioId', isEqualTo: widget.negocioId) // <-- Esto ahora funcionará
           .snapshots(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
@@ -762,9 +844,8 @@ class _VentasDashboardPageState extends State<VentasDashboardPage> {
           (sum, item) => sum + item.monto,
         );
         final int totalServicios = ventas.length;
-        final double ticketPromedio = totalServicios > 0
-            ? totalVentas / totalServicios
-            : 0;
+        final double ticketPromedio =
+            totalServicios > 0 ? totalVentas / totalServicios : 0;
         final Map<String, double> ventasPorServicio = {};
         for (var venta in ventas) {
           ventasPorServicio.update(
@@ -845,8 +926,7 @@ class _VentasDashboardPageState extends State<VentasDashboardPage> {
                               return;
                             }
                             touchedIndex = pieTouchResponse
-                                .touchedSection!
-                                .touchedSectionIndex;
+                                .touchedSection!.touchedSectionIndex;
                           });
                         },
                       ),
@@ -975,7 +1055,7 @@ class _SummaryCard extends StatelessWidget {
 }
 
 // =========================================================================
-// === PISO 4: PÁGINA DE CONFIGURACIÓN (Sin cambios) ===
+// === PÁGINA DE CONFIGURACIÓN (Sin cambios) ===
 // =========================================================================
 class ConfiguracionPage extends StatefulWidget {
   const ConfiguracionPage({super.key});
@@ -1018,24 +1098,25 @@ class _ConfiguracionPageState extends State<ConfiguracionPage> {
   }
 
   Padding _buildSectionTitle(String title) => Padding(
-    padding: const EdgeInsets.only(bottom: 8.0),
-    child: Text(
-      title,
-      style: TextStyle(
-        fontSize: 18,
-        fontWeight: FontWeight.bold,
-        color: Theme.of(context).colorScheme.primary,
-      ),
-    ),
-  );
+        padding: const EdgeInsets.only(bottom: 8.0),
+        child: Text(
+          title,
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: Theme.of(context).colorScheme.primary,
+          ),
+        ),
+      );
   ListTile _buildConfigOption(
     String title,
     IconData icon,
     VoidCallback onTap,
-  ) => ListTile(
-    leading: Icon(icon),
-    title: Text(title),
-    trailing: const Icon(Icons.chevron_right),
-    onTap: onTap,
-  );
+  ) =>
+      ListTile(
+        leading: Icon(icon),
+        title: Text(title),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: onTap,
+      );
 }

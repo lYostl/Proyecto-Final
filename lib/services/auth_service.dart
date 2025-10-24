@@ -106,4 +106,25 @@ class AuthService {
 
   // --- OBTENER USUARIO ACTUAL ---
   User? get currentUser => _auth.currentUser;
+
+  // =================================================================
+  // === ¡NUEVO MÉTODO AÑADIDO! ===
+  // =================================================================
+  Future<String?> sendPasswordReset(String email) async {
+    try {
+      await _auth.sendPasswordResetEmail(email: email.trim());
+      return null; // Éxito
+    } on FirebaseAuthException catch (e) {
+      switch (e.code) {
+        case 'user-not-found':
+          return 'No se encontró una cuenta con ese correo.';
+        case 'invalid-email':
+          return 'El formato del correo no es válido.';
+        default:
+          return 'Ocurrió un error: ${e.message ?? e.code}';
+      }
+    } catch (e) {
+      return 'Ocurrió un error inesperado: $e';
+    }
+  }
 }

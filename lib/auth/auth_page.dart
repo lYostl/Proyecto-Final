@@ -224,6 +224,21 @@ class _AuthPageState extends State<AuthPage>
                 (v == null || v.isEmpty) ? 'Ingresa tu contraseña' : null,
             obscureText: true,
           ),
+
+          // =================================================================
+          // === ¡BOTÓN AÑADIDO! ===
+          // =================================================================
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              TextButton(
+                onPressed: _showPasswordResetDialog,
+                child: const Text('¿Olvidaste tu contraseña?'),
+              ),
+            ],
+          ),
+          // =================================================================
+          
           const Spacer(),
           SizedBox(
             width: double.infinity,
@@ -321,6 +336,79 @@ class _AuthPageState extends State<AuthPage>
           ],
         ),
       ),
+    );
+  }
+
+  // =================================================================
+  // === ¡NUEVA FUNCIÓN AÑADIDA! ===
+  // =================================================================
+  Future<void> _showPasswordResetDialog() async {
+    final _resetEmailCtrl = TextEditingController();
+    // Pre-llenamos el correo si el usuario ya lo escribió en el login
+    _resetEmailCtrl.text = _loginEmailCtrl.text.trim();
+
+    return showDialog<void>(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: const Text('Restablecer Contraseña'),
+          content: SingleChildScrollView(
+            child: ListBody(
+              children: <Widget>[
+                const Text(
+                  'Ingresa tu correo y te enviaremos un enlace para restablecer tu contraseña.',
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: _resetEmailCtrl,
+                  autofocus: true,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: const InputDecoration(
+                    labelText: 'Correo electrónico',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Cancelar'),
+              onPressed: () {
+                Navigator.of(dialogContext).pop(); // Cierra el pop-up
+              },
+            ),
+            ElevatedButton(
+              child: const Text('Enviar'),
+              onPressed: () async {
+                final email = _resetEmailCtrl.text.trim();
+                if (email.isEmpty) {
+                  _showSnack("Por favor, ingresa un correo.");
+                  return; // Mantenemos el pop-up abierto
+                }
+                
+                // Mostramos un snackbar de "enviando..."
+                _showSnack("Enviando correo...");
+
+                // Llamamos al servicio
+                final err = await _auth.sendPasswordReset(email);
+
+                if (!mounted) return; // Chequeo de seguridad
+
+                Navigator.of(dialogContext).pop(); // Cierra el pop-up
+
+                if (err != null) {
+                  // Si hubo un error
+                  _showSnack(err);
+                } else {
+                  // Si tuvo éxito
+                  _showSnack('¡Correo enviado! Revisa tu bandeja de entrada.');
+                }
+              },
+            ),
+          ],
+        );
+      },
     );
   }
 }
