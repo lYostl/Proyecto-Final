@@ -1,16 +1,31 @@
-# agendamientos
+# 🚗 Proyecto Final - Sistema de Agendamiento de Lavado de Autos
 
-A new Flutter project.
+## 🧩 Descripción general
+Aplicación móvil desarrollada en **Flutter** para la administración de horarios de servicios de lavado de autos.  
+Permite a los usuarios **registrarse, iniciar sesión y agendar citas**, mientras los administradores pueden **visualizar y gestionar reservas**.
 
-## Getting Started
+La aplicación cuenta con:
+- Formularios validados por campo y al enviar.
+- Estados visibles de carga, éxito y error.
+- Reglas de negocio y validaciones cruzadas.
+- Flujo principal funcional y reproducible.
+- Contrato de datos coherente con ejemplos JSON.
 
-This project is a starting point for a Flutter application.
+---
 
-A few resources to get you started if this is your first Flutter project:
+## 📱 Tecnologías principales
+- **Flutter 3.35.7**
+- **Dart SDK 3.x**
+- **Firebase Authentication**
+- **Cloud Firestore**
+- **GoRouter** para navegación
+- **TableCalendar** y **fl_chart** para interfaz dinámica
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+---
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## ⚙️ Instalación y ejecución
+
+### 1️⃣ Clonar el repositorio
+```bash
+git clone https://github.com/tuusuario/Proyecto-Final.git
+cd Proyecto-Final
